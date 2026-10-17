@@ -370,7 +370,7 @@
         async function uploadFileToSupabase(file) {
             if (!file) return null;
             const fileExt = file.name.split('.').pop();
-            const fileNameUnique = `${Date.now()}_${Math.random().toString(36.substring(2, 9))}.${fileExt}`;
+            const fileNameUnique = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
             
             const { data, error } = await supabaseClient.storage
                 .from('lms-files')
