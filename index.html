@@ -10,6 +10,43 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- SheetJS (XLSX) Library untuk Ekspor & Baca Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Style Khusus Cetak Kartu Siswa (Lebar 5cm, Tinggi Bebas/Auto) -->
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: #fff;
+            }
+            .kartu-siswa {
+                width: 5cm !important;
+                min-width: 5cm !important;
+                max-width: 5cm !important;
+                height: auto !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin-bottom: 0.4cm;
+                border: 1px solid #000 !important;
+                padding: 0.2cm !important;
+                box-sizing: border-box !important;
+                background-color: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-50 font-sans antialiased text-gray-800">
 
@@ -164,6 +201,18 @@
                             <div class="flex flex-wrap gap-2">
                                 <button onclick="downloadTemplateSiswaExcel()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1">📥 Download Template Form Siswa</button>
                                 <button onclick="handleDeleteAllSiswa()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition">🗑️ Hapus Semua Siswa</button>
+                            </div>
+                        </div>
+
+                        <!-- Panel Fitur Cetak Kartu Siswa per Kelas -->
+                        <div class="bg-teal-50 border border-teal-200 p-4 rounded-xl space-y-3 max-w-lg">
+                            <h4 class="font-bold text-teal-900 text-xs uppercase tracking-wide">🪪 Cetak Kartu Siswa Per Kelas (Lebar 5 cm)</h4>
+                            <p class="text-[11px] text-teal-700">Pilih kelas di bawah ini untuk mencetak kartu akun seluruh siswa dalam kelas tersebut.</p>
+                            <div class="flex gap-2">
+                                <select id="select-kelas-cetak-kartu" class="flex-1 p-2 border rounded-lg text-xs bg-white font-semibold">
+                                    <option value="">-- Pilih Kelas --</option>
+                                </select>
+                                <button onclick="cetakKartuSiswaPerKelas()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition">🖨️ Cetak Kartu</button>
                             </div>
                         </div>
 
@@ -391,6 +440,9 @@
         </main>
     </div>
 
+    <!-- AREA CETAK KARTU SISWA (Khusus Print) -->
+    <div id="print-area" class="hidden"></div>
+
     <!-- MODAL GANTI PASSWORD SISWA / GURU -->
     <div id="ganti-password-modal" class="hidden fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col">
@@ -562,6 +614,76 @@
             }
 
             return file;
+        }
+
+        // ------------------ FITUR CETAK KARTU SISWA (LEBAR 5CM, PER KELAS) ------------------
+        async function cetakKartuSiswaPerKelas() {
+            const selectKelas = document.getElementById('select-kelas-cetak-kartu');
+            const targetKelas = selectKelas ? selectKelas.value : '';
+
+            if (!targetKelas) {
+                alert('Silakan pilih kelas terlebih dahulu untuk mencetak kartu siswa!');
+                return;
+            }
+
+            const { data: listSiswa, error } = await supabaseClient
+                .from('siswa')
+                .select('*')
+                .eq('kelas', targetKelas);
+
+            if (error || !listSiswa || listSiswa.length === 0) {
+                alert(`Tidak ditemukan data siswa untuk kelas: ${targetKelas}`);
+                return;
+            }
+
+            const printArea = document.getElementById('print-area');
+            printArea.innerHTML = '';
+
+            let htmlKartu = `<div class="flex flex-wrap gap-4 p-4 justify-start">`;
+
+            listSiswa.forEach((siswa) => {
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(siswa.username)}`;
+
+                htmlKartu += `
+                    <div class="kartu-siswa border border-black bg-white p-2 rounded-md shadow-none font-sans text-center text-gray-900 flex flex-col justify-between" style="width: 5cm; box-sizing: border-box;">
+                        <!-- HEADER KARTU -->
+                        <div class="border-b border-gray-400 pb-1 mb-1">
+                            <h4 class="font-black text-[9px] uppercase leading-tight tracking-tight text-blue-900">SMA NEGERI 1 TANJUNGSARI</h4>
+                            <p class="text-[7px] text-gray-600 font-bold">KARTU AKSES SISWA LMS</p>
+                        </div>
+                        
+                        <!-- BODY KARTU -->
+                        <div class="space-y-1 my-1">
+                            <div class="flex justify-center items-center my-1">
+                                <img src="${qrUrl}" alt="QR" class="w-14 h-14 border p-0.5 rounded bg-white">
+                            </div>
+                            <div class="text-[10px] font-black text-gray-900 leading-tight uppercase border-b pb-0.5 truncate">${siswa.nama}</div>
+                            <div class="text-[8px] font-bold text-blue-800">Kelas: ${siswa.kelas}</div>
+                        </div>
+
+                        <!-- CREDENTIALS -->
+                        <div class="bg-gray-100 p-1 rounded border border-gray-300 text-[8px] font-mono text-left space-y-0.5 mt-1">
+                            <div><b>User :</b> ${siswa.username}</div>
+                            <div><b>Pass :</b> ${siswa.password}</div>
+                        </div>
+
+                        <!-- FOOTER KARTU -->
+                        <div class="mt-1 pt-0.5 border-t border-gray-300 text-[6px] text-gray-500 font-semibold italic">
+                            Simpan kartu ini dengan baik.
+                        </div>
+                    </div>
+                `;
+            });
+
+            htmlKartu += `</div>`;
+            printArea.innerHTML = htmlKartu;
+            printArea.classList.remove('hidden');
+
+            setTimeout(() => {
+                window.print();
+                printArea.classList.add('hidden');
+                printArea.innerHTML = '';
+            }, 300);
         }
 
         // ------------------ FITUR GANTI PASSWORD ------------------
@@ -851,6 +973,7 @@
             };
         }
 
+        // ------------------ HASIL FITUR REKAP KBM ADMIN ------------------
         async function downloadRekapKbmExcelAdmin() {
             const [{ data: listKelas }, { data: listJadwal }, { data: listSiswa }, { data: listKbmSettings }] = await Promise.all([
                 supabaseClient.from('kelas').select('*'),
@@ -861,7 +984,7 @@
 
             const todayObj = new Date();
             const todayStr = todayObj.toISOString().split('T')[0];
-            const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Sabtu'];
+            const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jum\'at', 'Sabtu'];
             const monthsName = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
             const currentDayName = daysName[todayObj.getDay()];
@@ -878,10 +1001,13 @@
                 const totalSiswa = siswaInKelas.length;
 
                 const jadwalKelas = listJadwal?.filter(j => j.kelas === k.nama) || [];
-                const jadwalHariIni = jadwalKelas.filter(j => j.tanggal === todayStr);
+                
+                // HANYA AMBIL MATERI SESUAI REALTIME HARI INI & TANGGAL
+                const currentDayNameJumat = currentDayName === 'Jumat' ? "Jum'at" : currentDayName;
+                const jadwalHariIni = jadwalKelas.filter(j => j.tanggal === todayStr && j.hari === currentDayNameJumat);
 
-                const customKbm = listKbmSettings?.find(s => s.nama_kelas === k.nama && s.hari === (currentDayName === 'Jumat' ? "Jum'at" : currentDayName));
-                const defaultDef = DEFAULT_KBM_MATRIX.find(d => d.hari === (currentDayName === 'Jumat' ? "Jum'at" : currentDayName));
+                const customKbm = listKbmSettings?.find(s => s.nama_kelas === k.nama && s.hari === currentDayNameJumat);
+                const defaultDef = DEFAULT_KBM_MATRIX.find(d => d.hari === currentDayNameJumat);
 
                 let jamMulaiStr = customKbm ? (customKbm.jam_mulai || '') : (defaultDef ? defaultDef.jam_mulai : '');
                 let jamSelesaiStr = customKbm ? (customKbm.jam_selesai || '') : (defaultDef ? defaultDef.jam_selesai : '');
@@ -2066,6 +2192,13 @@
                 </li>`).join('');
             }
 
+            // POPULATE DROPDOWN KELAS UNTUK CETAK KARTU SISWA
+            const selectCetakKartu = document.getElementById('select-kelas-cetak-kartu');
+            if (selectCetakKartu && listKelas) {
+                const currentSel = selectCetakKartu.value;
+                selectCetakKartu.innerHTML = '<option value="">-- Pilih Kelas --</option>' + listKelas.map(k => `<option value="${k.nama}" ${currentSel === k.nama ? 'selected' : ''}>${k.nama}</option>`).join('');
+            }
+
             const ulSiswa = document.getElementById('list-siswa-admin');
             const keyword = document.getElementById('search-siswa-input')?.value.toLowerCase() || '';
             if (ulSiswa && listSiswa) {
@@ -2095,6 +2228,7 @@
                 }
             }
 
+            // ------------------ LIVE MONITORING REALTIME SESUAI TANGGAL & HARI ------------------
             const monitoringContainer = document.getElementById('live-monitoring-container');
             if (monitoringContainer && listKelas) {
                 const todayObj = new Date();
@@ -2107,10 +2241,13 @@
                     const totalSiswa = siswaInKelas.length;
 
                     const jadwalKelas = listJadwal?.filter(j => j.kelas === k.nama) || [];
-                    const jadwalHariIni = jadwalKelas.filter(j => j.tanggal === todayStr);
 
-                    const customKbm = activeKbmSettings.find(s => s.nama_kelas === k.nama && s.hari === currentDayName);
-                    const defaultDef = DEFAULT_KBM_MATRIX.find(d => d.hari === currentDayName);
+                    // HANYA AMBIL MATERI YANG HARI INI & TANGGAL SESUAI PELAJARAN (REALTIME)
+                    const currentDayNameJumat = currentDayName === 'Jumat' ? "Jum'at" : currentDayName;
+                    const jadwalHariIni = jadwalKelas.filter(j => j.tanggal === todayStr && j.hari === currentDayNameJumat);
+
+                    const customKbm = activeKbmSettings.find(s => s.nama_kelas === k.nama && s.hari === currentDayNameJumat);
+                    const defaultDef = DEFAULT_KBM_MATRIX.find(d => d.hari === currentDayNameJumat);
 
                     let jamMulaiStr = customKbm ? (customKbm.jam_mulai || '') : (defaultDef ? defaultDef.jam_mulai : '');
                     let jamSelesaiStr = customKbm ? (customKbm.jam_selesai || '') : (defaultDef ? defaultDef.jam_selesai : '');
