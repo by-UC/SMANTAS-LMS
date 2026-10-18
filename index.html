@@ -100,7 +100,7 @@
                                             <tr class="bg-gray-100 text-gray-700 font-bold border-b border-gray-300">
                                                 <th rowspan="2" class="p-2 border border-gray-300 w-24" id="header-nama-kelas-matrix">X-1</th>
                                                 <th colspan="2" class="p-2 border border-gray-300 bg-blue-50">Rentang Jam KBM</th>
-                                                <th colspan="4" class="p-2 border border-gray-300 bg-amber-50">Rentang Jam Istirahat (Jam Isi)[cite: 6]</th>
+                                                <th colspan="4" class="p-2 border border-gray-300 bg-amber-50">Rentang Jam Istirahat (Jam Isi)</th>
                                             </tr>
                                             <tr class="bg-gray-50 text-gray-700 font-semibold border-b border-gray-300">
                                                 <th class="p-2 border border-gray-300">Jam Mulai KBM</th>
@@ -126,8 +126,22 @@
 
                     <!-- Tab Guru & Mata Pelajaran -->
                     <div id="admin-tab-guru" class="admin-tab-content hidden space-y-4">
-                        <h3 id="form-guru-title" class="text-base font-bold text-gray-800">Tambah Guru & Mata Pelajaran yang Diampu</h3>
-                        <form id="form-guru-admin" onsubmit="handleCreateOrUpdateGuru(event)" class="space-y-3 max-w-lg">
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <h3 id="form-guru-title" class="text-base font-bold text-gray-800">Tambah Guru & Mata Pelajaran yang Diampu</h3>
+                            <button onclick="downloadTemplateGuruExcel()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1 shadow">
+                                📥 Download Template Form Guru
+                            </button>
+                        </div>
+
+                        <!-- Upload Massal Data Guru Excel -->
+                        <div class="bg-purple-50 border border-purple-200 p-4 rounded-xl space-y-3 max-w-lg">
+                            <h4 class="font-bold text-purple-900 text-xs uppercase tracking-wide">📂 Upload Excel Data Guru (.xlsx / .xls)</h4>
+                            <p class="text-[11px] text-purple-700">Unggah file Excel sesuai template untuk mendaftarkan banyak guru sekaligus.</p>
+                            <input type="file" id="input-excel-guru" accept=".xlsx, .xls" class="w-full text-xs border p-2 rounded-lg bg-white">
+                            <button onclick="handleUploadExcelGuru()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs w-full transition">Proses Upload Excel Guru</button>
+                        </div>
+
+                        <form id="form-guru-admin" onsubmit="handleCreateOrUpdateGuru(event)" class="space-y-3 max-w-lg border-t pt-3">
                             <input type="hidden" id="edit-guru-id" value="">
                             <input type="text" id="input-nama-guru" required placeholder="Nama & Gelar Guru" class="w-full p-2.5 border rounded-lg text-sm">
                             <input type="text" id="input-mapel-guru" required placeholder="Mata Pelajaran (Gunakan koma jika > 1, misal: KIMIA, BIOLOGI)" class="w-full p-2.5 border rounded-lg text-sm">
@@ -159,7 +173,6 @@
                             <button onclick="handleUploadExcelSiswa()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs w-full transition">Proses Upload File Excel</button>
                         </div>
 
-                        <!-- Alternatif Bulk Upload Text -->
                         <details class="text-xs text-gray-500 max-w-lg">
                             <summary class="cursor-pointer font-bold text-blue-600">Atau gunakan Text Manual / Paste CSV</summary>
                             <form onsubmit="handleBulkUploadSiswa(event)" class="space-y-3 mt-2">
@@ -168,7 +181,6 @@
                             </form>
                         </details>
 
-                        <!-- Form Edit Single Siswa -->
                         <div id="form-edit-siswa-container" class="hidden bg-amber-50 p-4 rounded-xl border border-amber-200 max-w-lg space-y-3">
                             <h4 id="form-siswa-title" class="font-bold text-amber-800 text-sm">Edit Data Siswa</h4>
                             <form id="form-siswa-admin" onsubmit="handleUpdateSiswa(event)" class="space-y-2">
@@ -192,21 +204,50 @@
 
                     <!-- Tab Live Monitoring -->
                     <div id="admin-tab-monitoring" class="admin-tab-content hidden space-y-4">
-                        <h3 class="text-base font-bold text-gray-800">Live Monitoring Siswa & Jam KBM (Real-Time)</h3>
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <h3 class="text-base font-bold text-gray-800">Live Monitoring Siswa & Jam KBM (Real-Time)</h3>
+                            <button onclick="downloadRekapKbmExcelAdmin()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
+                                📊 Download Rekapitulasi KBM (Excel)
+                            </button>
+                        </div>
                         <div id="live-monitoring-container" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
                     </div>
 
-                    <!-- Tab Pengaturan Admin -->
-                    <div id="admin-tab-setting" class="admin-tab-content hidden space-y-4 max-w-lg">
-                        <h3 class="text-base font-bold text-gray-800">Pengaturan Password Admin</h3>
-                        <div class="bg-gray-50 p-3 rounded-lg border text-sm flex justify-between items-center">
-                            <span>Password Admin Saat Ini:</span>
-                            <span id="display-admin-pass" class="font-mono font-bold bg-gray-200 px-2 py-1 rounded">••••••••</span>
+                    <!-- Tab Pengaturan Admin & Backup Restore -->
+                    <div id="admin-tab-setting" class="admin-tab-content hidden space-y-6 max-w-lg">
+                        <div class="space-y-4">
+                            <h3 class="text-base font-bold text-gray-800">Pengaturan Password Admin</h3>
+                            <div class="bg-gray-50 p-3 rounded-lg border text-sm flex justify-between items-center">
+                                <span>Password Admin Saat Ini:</span>
+                                <span id="display-admin-pass" class="font-mono font-bold bg-gray-200 px-2 py-1 rounded">••••••••</span>
+                            </div>
+                            <form onsubmit="handleResetAdminPassword(event)" class="space-y-3">
+                                <input type="password" id="new-admin-password" required placeholder="Masukkan Password Baru Admin" class="w-full p-2.5 border rounded-lg text-sm">
+                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm">Reset / Ganti Password Admin</button>
+                            </form>
                         </div>
-                        <form onsubmit="handleResetAdminPassword(event)" class="space-y-3">
-                            <input type="password" id="new-admin-password" required placeholder="Masukkan Password Baru Admin" class="w-full p-2.5 border rounded-lg text-sm">
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm">Reset / Ganti Password Admin</button>
-                        </form>
+
+                        <!-- Panel Backup & Restore Database Admin -->
+                        <div class="border-t pt-4 space-y-4">
+                            <h3 class="text-base font-bold text-gray-800">💾 Backup & Restore Database LMS</h3>
+                            
+                            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-2">
+                                <h4 class="font-bold text-emerald-900 text-xs uppercase tracking-wide">📦 Unduh Backup Database (.json)</h4>
+                                <p class="text-[11px] text-emerald-700">Simpan salinan cadangan seluruh data sistem (Kelas, Guru, Siswa, Jadwal, Absen, dan Tugas).</p>
+                                <button onclick="handleBackupDatabase()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs w-full transition flex items-center justify-center gap-1.5">
+                                    💾 Download Cadangan Database (JSON)
+                                </button>
+                            </div>
+
+                            <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-2">
+                                <h4 class="font-bold text-amber-900 text-xs uppercase tracking-wide">📤 Restore / Upload Cadangan Database (.json)</h4>
+                                <p class="text-[11px] text-amber-700">Unggah file cadangan `.json` untuk memulihkan seluruh data sistem ke database.</p>
+                                <input type="file" id="input-restore-db" accept=".json" class="w-full text-xs border p-2 rounded-lg bg-white">
+                                <button onclick="handleRestoreDatabase()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-lg text-xs w-full transition flex items-center justify-center gap-1.5">
+                                    📤 Pulihkan Database dari File JSON
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -215,14 +256,12 @@
             <div id="content-guru" class="role-content hidden space-y-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Guru</h2>
 
-                <!-- Tab Navigasi Guru -->
                 <div class="flex flex-wrap border-b border-gray-200 bg-white rounded-t-xl shadow-sm overflow-hidden">
                     <button onclick="switchGuruTab('materi')" id="guru-tab-btn-materi" class="guru-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-blue-600 border-b-2 border-blue-600 transition">Buat & Kelola Materi</button>
                     <button onclick="switchGuruTab('periksa')" id="guru-tab-btn-periksa" class="guru-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-gray-500 transition">Periksa Hasil & Monitoring Realtime</button>
                 </div>
 
                 <div class="bg-white p-4 sm:p-6 rounded-b-xl shadow-sm border border-t-0 border-gray-100">
-                    <!-- Tab 1: Buat & Kelola Materi -->
                     <div id="guru-tab-materi" class="guru-tab-content grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div class="space-y-4">
                             <h3 id="form-jadwal-title" class="text-base font-bold text-gray-800">Buat Materi & Pilih Kelas</h3>
@@ -277,7 +316,6 @@
                         </div>
                     </div>
 
-                    <!-- Tab 2: Periksa Hasil & Realtime Siswa -->
                     <div id="guru-tab-periksa" class="guru-tab-content hidden space-y-6">
                         <div class="flex flex-wrap gap-3 justify-between items-center bg-gray-50 p-4 rounded-xl border">
                             <h3 class="text-base font-bold text-gray-800">Filter Monitoring & Periksa Tugas</h3>
@@ -289,12 +327,8 @@
                             </div>
                         </div>
 
-                        <!-- Realtime Status Grid -->
-                        <div id="guru-realtime-stats" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center font-bold">
-                            <!-- Populated via JS -->
-                        </div>
+                        <div id="guru-realtime-stats" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center font-bold"></div>
 
-                        <!-- Detail Siswa Realtime -->
                         <div class="space-y-3">
                             <h4 class="text-sm font-bold text-gray-700">Daftar Realtime Siswa (Status Kehadiran & Pengerjaan)</h4>
                             <div class="overflow-x-auto border rounded-xl shadow-sm">
@@ -310,19 +344,25 @@
                                             <th class="p-3">Waktu Akses / Kirim (WIB)</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="table-realtime-siswa" class="divide-y bg-white">
-                                        <!-- Populated via JS -->
-                                    </tbody>
+                                    <tbody id="table-realtime-siswa" class="divide-y bg-white"></tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <!-- Hasil Pengumpulan Tugas -->
+                        <!-- Pengaturan Default Nilai & Feedback Guru Per Guru -->
                         <div class="space-y-3 pt-4 border-t">
-                            <h4 class="text-sm font-bold text-gray-700">Hasil & Penilaian Tugas Siswa</h4>
-                            <div id="list-hasil-jawaban-siswa" class="space-y-3 max-h-[500px] overflow-y-auto">
-                                <!-- Populated via JS -->
+                            <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-2">
+                                <h4 class="font-bold text-blue-900 text-xs uppercase tracking-wide">⚙️ Pengaturan Default Penilaian Guru</h4>
+                                <p class="text-[11px] text-blue-700">Atur angka nilai default dan teks feedback default Anda. Jika dikosongkan, tidak akan menyebabkan error.</p>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                                    <input type="number" id="guru-default-nilai-setting" placeholder="Default Nilai (Misal: 80)" min="0" max="100" class="p-2 border rounded-lg text-xs bg-white font-bold text-center">
+                                    <input type="text" id="guru-default-feedback-setting" placeholder="Default Feedback..." class="p-2 border rounded-lg text-xs bg-white">
+                                    <button onclick="simpanDefaultNilaiFeedbackGuru()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition">💾 Simpan Default Nilai & Feedback</button>
+                                </div>
                             </div>
+
+                            <h4 class="text-sm font-bold text-gray-700 pt-2">Hasil & Penilaian Tugas Siswa</h4>
+                            <div id="list-hasil-jawaban-siswa" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
                         </div>
                     </div>
                 </div>
@@ -333,7 +373,6 @@
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Siswa</h2>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Bagian 1: Daftar Materi Tugas yang Belum Dikerjakan -->
                     <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
                         <h3 class="text-base font-bold text-amber-700 flex items-center gap-2">
                             <span>📌</span> Materi & Tugas Belum Dikerjakan
@@ -341,7 +380,6 @@
                         <div id="list-jadwal-belum" class="space-y-4 max-h-[600px] overflow-y-auto"></div>
                     </div>
 
-                    <!-- Bagian 2: Daftar Nilai dan Pengiriman Tugas -->
                     <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
                         <h3 class="text-base font-bold text-green-700 flex items-center gap-2">
                             <span>✅</span> Nilai & Riwayat Pengiriman Tugas
@@ -361,9 +399,7 @@
                 <h3 id="file-modal-title" class="font-bold text-sm sm:text-base truncate">Penampil Berkas</h3>
                 <button onclick="closeFileModal()" class="text-white hover:bg-blue-700 px-3 py-1 rounded-lg font-bold text-lg">✕</button>
             </div>
-            <div id="file-modal-body" class="flex-1 bg-gray-100 p-2 overflow-auto flex justify-center items-center">
-                <!-- Konten dinamis penampil file -->
-            </div>
+            <div id="file-modal-body" class="flex-1 bg-gray-100 p-2 overflow-auto flex justify-center items-center"></div>
         </div>
     </div>
 
@@ -391,7 +427,6 @@
         let selectedKelasForKbm = null;
         let activeKbmSettings = [];
 
-        // DEFAULT JAM KBM KELAS SESUAI GAMBAR REFERENSI
         const DEFAULT_KBM_MATRIX = [
             { hari: 'Senin', jam_mulai: '07.30', jam_selesai: '15.00', istirahat_1: '09.30 - 10.30', istirahat_2: '11.50 - 12.30', istirahat_3: '', istirahat_4: '' },
             { hari: 'Selasa', jam_mulai: '06.30', jam_selesai: '15.00', istirahat_1: '09.10 - 10.30', istirahat_2: '11.50 - 12.50', istirahat_3: '', istirahat_4: '' },
@@ -418,7 +453,350 @@
             }
         });
 
-        // FUNGSI DOWNLOAD TEMPLATE EXCEL FORM SISWA
+        // BACKUP & RESTORE DATABASE ADMIN (JSON)
+        async function handleBackupDatabase() {
+            try {
+                const [
+                    { data: kelas },
+                    { data: guru },
+                    { data: siswa },
+                    { data: jadwal },
+                    { data: absen },
+                    { data: tugas },
+                    { data: kbm },
+                    { data: setting }
+                ] = await Promise.all([
+                    supabaseClient.from('kelas').select('*'),
+                    supabaseClient.from('guru').select('*'),
+                    supabaseClient.from('siswa').select('*'),
+                    supabaseClient.from('jadwal').select('*'),
+                    supabaseClient.from('absen').select('*'),
+                    supabaseClient.from('tugas').select('*'),
+                    supabaseClient.from('pengaturan_kbm_kelas').select('*'),
+                    supabaseClient.from('admin_setting').select('*')
+                ]);
+
+                const backupData = {
+                    timestamp: new Date().toISOString(),
+                    database: {
+                        kelas: kelas || [],
+                        guru: guru || [],
+                        siswa: siswa || [],
+                        jadwal: jadwal || [],
+                        absen: absen || [],
+                        tugas: tugas || [],
+                        pengaturan_kbm_kelas: kbm || [],
+                        admin_setting: setting || []
+                    }
+                };
+
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+                const downloadAnchor = document.createElement('a');
+                const tgl = new Date().toISOString().split('T')[0];
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `Backup_LMS_Database_${tgl}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+
+                alert('Backup database JSON berhasil diunduh!');
+            } catch (err) {
+                alert('Gagal melakukan backup database: ' + err.message);
+            }
+        }
+
+        async function handleRestoreDatabase() {
+            const fileInput = document.getElementById('input-restore-db');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Silakan pilih file backup database (.json) terlebih dahulu!');
+                return;
+            }
+
+            if (!confirm('PERINGATAN SANGAT PENTING:\nProses restore ini akan MENGAPUS seluruh data yang ada dan MEMULIHKAN data dari file JSON.\nApakah Anda yakin ingin melanjutkan?')) {
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                try {
+                    const parsedData = JSON.parse(e.target.result);
+                    if (!parsedData.database) {
+                        alert('Format file JSON backup tidak valid.');
+                        return;
+                    }
+
+                    const db = parsedData.database;
+
+                    await supabaseClient.from('tugas').delete().neq('id', 0);
+                    await supabaseClient.from('absen').delete().neq('id', 0);
+                    await supabaseClient.from('jadwal').delete().neq('id', 0);
+                    await supabaseClient.from('siswa').delete().neq('id', 0);
+                    await supabaseClient.from('guru').delete().neq('id', 0);
+                    await supabaseClient.from('kelas').delete().neq('id', 0);
+                    await supabaseClient.from('pengaturan_kbm_kelas').delete().neq('id', 0);
+
+                    if (db.kelas && db.kelas.length > 0) await supabaseClient.from('kelas').insert(db.kelas);
+                    if (db.guru && db.guru.length > 0) await supabaseClient.from('guru').insert(db.guru);
+                    if (db.siswa && db.siswa.length > 0) await supabaseClient.from('siswa').insert(db.siswa);
+                    if (db.jadwal && db.jadwal.length > 0) await supabaseClient.from('jadwal').insert(db.jadwal);
+                    if (db.absen && db.absen.length > 0) await supabaseClient.from('absen').insert(db.absen);
+                    if (db.tugas && db.tugas.length > 0) await supabaseClient.from('tugas').insert(db.tugas);
+                    if (db.pengaturan_kbm_kelas && db.pengaturan_kbm_kelas.length > 0) await supabaseClient.from('pengaturan_kbm_kelas').insert(db.pengaturan_kbm_kelas);
+
+                    alert('Database berhasil dipulihkan secara penuh!');
+                    fileInput.value = '';
+                    renderData();
+                } catch (err) {
+                    alert('Gagal memproses restore database: ' + err.message);
+                }
+            };
+
+            reader.readAsText(file);
+        }
+
+        // DOWNLOAD TEMPLATE EXCEL & UPLOAD MASSAL GURU
+        function downloadTemplateGuruExcel() {
+            let templateData = [
+                { "Nama": "Drs. Budi Santoso, M.Pd.", "Mapel": "KIMIA, BIOLOGI", "Username": "budisantoso", "Password": "password123" },
+                { "Nama": "Siti Rahmawati, S.Pd.", "Mapel": "BAHASA INGGRIS", "Username": "sitirahma", "Password": "password123" }
+            ];
+
+            const worksheet = XLSX.utils.json_to_sheet(templateData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Template Guru");
+            XLSX.writeFile(workbook, "Template_Form_Guru.xlsx");
+        }
+
+        async function handleUploadExcelGuru() {
+            const fileInput = document.getElementById('input-excel-guru');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Silakan pilih file Excel guru terlebih dahulu!');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                    if (!jsonRows || jsonRows.length === 0) {
+                        alert('File Excel kosong atau format tidak sesuai.');
+                        return;
+                    }
+
+                    let formattedRows = [];
+                    jsonRows.forEach(row => {
+                        const nama = row['Nama'] || row['nama'] || row['NAMA'] || '';
+                        const mapel = row['Mapel'] || row['mapel'] || row['MAPEL'] || '';
+                        const username = row['Username'] || row['username'] || row['USERNAME'] || '';
+                        const password = row['Password'] || row['password'] || row['PASSWORD'] || '';
+
+                        if (nama && username && password) {
+                            formattedRows.push({
+                                nama: String(nama).trim(),
+                                mapel: String(mapel).trim(),
+                                username: String(username).trim(),
+                                password: String(password).trim()
+                            });
+                        }
+                    });
+
+                    if (formattedRows.length === 0) {
+                        alert('Tidak ada data guru valid yang ditemukan di file Excel. Pastikan kolom bernama: Nama, Mapel, Username, Password.');
+                        return;
+                    }
+
+                    const { error } = await supabaseClient.from('guru').insert(formattedRows);
+                    if (error) {
+                        alert('Gagal mengupload ke database: ' + error.message);
+                        return;
+                    }
+
+                    alert(`Berhasil mengupload ${formattedRows.length} data guru dari file Excel!`);
+                    fileInput.value = '';
+                    renderData();
+                } catch (err) {
+                    alert('Terjadi kesalahan saat membaca file Excel Guru: ' + err.message);
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function loadDefaultNilaiFeedbackGuru() {
+            if (!currentUser || currentUser.role !== 'guru') return;
+            const guruKey = `guru_def_${currentUser.username || currentUser.nama}`;
+            const saved = localStorage.getItem(guruKey);
+            let defNilai = "80";
+            let defFeedback = "Terima Kasih Sudah mengerjakan Tugas. Pelajari Kembali Materi, untuk meningkatkan pemahamannya.";
+
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    defNilai = parsed.nilai !== undefined ? parsed.nilai : "";
+                    defFeedback = parsed.feedback !== undefined ? parsed.feedback : "";
+                } catch(e) {}
+            }
+
+            const inputNilai = document.getElementById('guru-default-nilai-setting');
+            const inputFeedback = document.getElementById('guru-default-feedback-setting');
+            if (inputNilai) inputNilai.value = defNilai;
+            if (inputFeedback) inputFeedback.value = defFeedback;
+        }
+
+        function simpanDefaultNilaiFeedbackGuru() {
+            if (!currentUser || currentUser.role !== 'guru') return;
+            const guruKey = `guru_def_${currentUser.username || currentUser.nama}`;
+            const nilaiVal = document.getElementById('guru-default-nilai-setting').value;
+            const feedbackVal = document.getElementById('guru-default-feedback-setting').value;
+
+            localStorage.setItem(guruKey, JSON.stringify({
+                nilai: nilaiVal,
+                feedback: feedbackVal
+            }));
+
+            alert('Pengaturan Default Nilai & Feedback Anda berhasil disimpan!');
+            renderData();
+        }
+
+        function getGuruDefaultNilaiAndFeedback() {
+            if (!currentUser || currentUser.role !== 'guru') {
+                return { nilai: "80", feedback: "Terima Kasih Sudah mengerjakan Tugas. Pelajari Kembali Materi, untuk meningkatkan pemahamannya." };
+            }
+            const guruKey = `guru_def_${currentUser.username || currentUser.nama}`;
+            const saved = localStorage.getItem(guruKey);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    return {
+                        nilai: parsed.nilai !== undefined ? parsed.nilai : "",
+                        feedback: parsed.feedback !== undefined ? parsed.feedback : ""
+                    };
+                } catch(e) {}
+            }
+            return {
+                nilai: "80",
+                feedback: "Terima Kasih Sudah mengerjakan Tugas. Pelajari Kembali Materi, untuk meningkatkan pemahamannya."
+            };
+        }
+
+        async function downloadRekapKbmExcelAdmin() {
+            const [{ data: listKelas }, { data: listJadwal }, { data: listSiswa }, { data: listKbmSettings }] = await Promise.all([
+                supabaseClient.from('kelas').select('*'),
+                supabaseClient.from('jadwal').select('*'),
+                supabaseClient.from('siswa').select('*'),
+                supabaseClient.from('pengaturan_kbm_kelas').select('*')
+            ]);
+
+            const todayObj = new Date();
+            const todayStr = todayObj.toISOString().split('T')[0];
+            const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const monthsName = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+            const currentDayName = daysName[todayObj.getDay()];
+            const dayNum = todayObj.getDate();
+            const monthName = monthsName[todayObj.getMonth()];
+            const yearNum = todayObj.getFullYear();
+
+            const fileNameFormatted = `Rekap_KBM_${currentDayName}_${dayNum}_${monthName}_${yearNum}.xlsx`;
+
+            let excelData = [];
+
+            listKelas?.forEach(k => {
+                const siswaInKelas = listSiswa?.filter(s => s.kelas === k.nama) || [];
+                const totalSiswa = siswaInKelas.length;
+
+                const jadwalKelas = listJadwal?.filter(j => j.kelas === k.nama) || [];
+                const jadwalHariIni = jadwalKelas.filter(j => j.tanggal === todayStr);
+
+                const customKbm = listKbmSettings?.find(s => s.nama_kelas === k.nama && s.hari === (currentDayName === 'Jumat' ? "Jum'at" : currentDayName));
+                const defaultDef = DEFAULT_KBM_MATRIX.find(d => d.hari === (currentDayName === 'Jumat' ? "Jum'at" : currentDayName));
+
+                let jamMulaiStr = customKbm ? (customKbm.jam_mulai || '') : (defaultDef ? defaultDef.jam_mulai : '');
+                let jamSelesaiStr = customKbm ? (customKbm.jam_selesai || '') : (defaultDef ? defaultDef.jam_selesai : '');
+
+                let istirahatList = [];
+                if (customKbm) {
+                    [customKbm.istirahat_1, customKbm.istirahat_2, customKbm.istirahat_3, customKbm.istirahat_4].forEach(i => {
+                        if (i && i.includes('-')) istirahatList.push(i.trim());
+                    });
+                } else if (defaultDef) {
+                    [defaultDef.istirahat_1, defaultDef.istirahat_2, defaultDef.istirahat_3, defaultDef.istirahat_4].forEach(i => {
+                        if (i && i.includes('-')) istirahatList.push(i.trim());
+                    });
+                }
+
+                jadwalHariIni.sort((a, b) => timeToMin(a.jam_mulai) - timeToMin(b.jam_selesai));
+
+                let startKbmMin = timeToMin(jamMulaiStr);
+                let endKbmMin = timeToMin(jamSelesaiStr);
+
+                let busyBlocks = [];
+                jadwalHariIni.forEach(j => {
+                    busyBlocks.push({ start: timeToMin(j.jam_mulai), end: timeToMin(j.jam_selesai) });
+                });
+                istirahatList.forEach(i => {
+                    const [p1, p2] = i.split('-').map(s => s.trim());
+                    busyBlocks.push({ start: timeToMin(p1), end: timeToMin(p2) });
+                });
+
+                busyBlocks.sort((a, b) => a.start - b.start);
+
+                let emptyIntervals = [];
+                let pointer = startKbmMin;
+
+                busyBlocks.forEach(block => {
+                    if (block.start > pointer) {
+                        emptyIntervals.push({ start: pointer, end: block.start });
+                    }
+                    if (block.end > pointer) {
+                        pointer = block.end;
+                    }
+                });
+
+                if (pointer < endKbmMin) {
+                    emptyIntervals.push({ start: pointer, end: endKbmMin });
+                }
+
+                let statusKbmStr = "Normal / Terjadwal";
+                if (startKbmMin >= endKbmMin) statusKbmStr = "Libur / Tidak Ada KBM";
+
+                let jamIsiText = jadwalHariIni.length > 0 
+                    ? jadwalHariIni.map(j => `[${j.jam_mulai}-${j.jam_selesai}] ${j.mapel} (${j.pengampu || 'Guru'})`).join('; ')
+                    : 'Belum Ada Jam Isi';
+
+                let jamKosongText = emptyIntervals.length > 0
+                    ? emptyIntervals.map(i => `${formatMinToTime(i.start)}-${formatMinToTime(i.end)}`).join('; ')
+                    : (startKbmMin < endKbmMin ? 'Full Terisi' : '-');
+
+                excelData.push({
+                    "Kelas": k.nama,
+                    "Total Siswa": totalSiswa,
+                    "Hari": currentDayName,
+                    "Tanggal": `${dayNum} ${monthName} ${yearNum}`,
+                    "Jam KBM Resmi": jamMulaiStr && jamSelesaiStr ? `${jamMulaiStr} - ${jamSelesaiStr} WIB` : '-',
+                    "Jumlah Sesi Isi": jadwalHariIni.length,
+                    "Detail Jam Isi (Guru & Mapel)": jamIsiText,
+                    "Rentang Jam Kosong": jamKosongText,
+                    "Status KBM": statusKbmStr
+                });
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Live KBM");
+            XLSX.writeFile(workbook, fileNameFormatted);
+        }
+
         function downloadTemplateSiswaExcel() {
             let templateData = [
                 { "Nama": "Contoh Nama Siswa 1", "Kelas": "X-1", "Username": "siswa1", "Password": "password123" },
@@ -431,7 +809,6 @@
             XLSX.writeFile(workbook, "Template_Form_Siswa.xlsx");
         }
 
-        // FUNGSI UPLOAD FILE EXCEL SISWA
         async function handleUploadExcelSiswa() {
             const fileInput = document.getElementById('input-excel-siswa');
             if (!fileInput.files || fileInput.files.length === 0) {
@@ -449,7 +826,6 @@
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     
-                    // Convert Excel to JSON
                     const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
                     if (!jsonRows || jsonRows.length === 0) {
@@ -459,7 +835,6 @@
 
                     let formattedRows = [];
                     jsonRows.forEach(row => {
-                        // Mencari key case-insensitive (Nama/nama, Kelas/kelas, dll)
                         const nama = row['Nama'] || row['nama'] || row['NAMA'] || '';
                         const kelas = row['Kelas'] || row['kelas'] || row['KELAS'] || '';
                         const username = row['Username'] || row['username'] || row['USERNAME'] || '';
@@ -511,7 +886,7 @@
             if (!jamMulaiVal) return;
 
             const [hours, minutes] = jamMulaiVal.split(':').map(Number);
-            let totalMinutes = hours * 60 + minutes + 40; // Tambah 40 menit
+            let totalMinutes = hours * 60 + minutes + 40;
 
             const newHours = Math.floor(totalMinutes / 60) % 24;
             const newMinutes = totalMinutes % 60;
@@ -693,6 +1068,7 @@
             document.getElementById(`content-${currentUser.role}`).classList.remove('hidden');
             document.getElementById('user-info-badge').innerText = `${currentUser.nama} (${currentUser.role.toUpperCase()})`;
 
+            loadDefaultNilaiFeedbackGuru();
             renderData();
         }
 
@@ -1420,7 +1796,6 @@
                 }
             }
 
-            // DASHBOARD LIVE MONITORING ADMIN
             const monitoringContainer = document.getElementById('live-monitoring-container');
             if (monitoringContainer && listKelas) {
                 const todayObj = new Date();
@@ -1589,6 +1964,8 @@
                 let tableHtml = '';
                 let listJawabanHtml = '';
 
+                const guruDefaults = getGuruDefaultNilaiAndFeedback();
+
                 filteredJadwal.forEach(j => {
                     const targetSiswa = listSiswa?.filter(s => s.kelas === j.kelas) || [];
 
@@ -1638,6 +2015,9 @@
                             const btnRemedialClass = tg.izin_perbaikan ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700';
                             const safeTugasUrl = tg.file_url ? `'${tg.file_url}'` : 'null';
 
+                            const valNilaiForm = (tg.nilai !== null && tg.nilai !== undefined) ? tg.nilai : guruDefaults.nilai;
+                            const valFeedbackForm = tg.catatan_guru ? tg.catatan_guru : guruDefaults.feedback;
+
                             listJawabanHtml += `<div class="bg-white border rounded-xl p-4 shadow-sm space-y-3">
                                 <div class="flex justify-between items-start border-b pb-2">
                                     <div>
@@ -1653,8 +2033,8 @@
                                 ${tg.file_name && tg.file_name !== 'Tanpa File' ? `<div class="text-xs font-semibold text-gray-600">📎 File Lampiran Siswa: <button onclick="bukaViewerFile('${tg.file_name}',${safeTugasUrl})" class="text-blue-600 font-mono bg-blue-50 px-2 py-1 rounded border border-blue-200 underline">${tg.file_name}</button></div>` : ''}
                                 
                                 <form onsubmit="handleBeriNilai(event, ${tg.id})" class="pt-2 border-t grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                                    <input type="number" id="input-nilai-${tg.id}" value="${tg.nilai !== null && tg.nilai !== undefined ? tg.nilai : ''}" placeholder="Nilai (0-100)" min="0" max="100" required class="p-2 border rounded-lg text-xs font-bold text-center">
-                                    <input type="text" id="input-catatan-${tg.id}" value="${tg.catatan_guru || ''}" placeholder="Catatan / Feedback..." class="p-2 border rounded-lg text-xs">
+                                    <input type="number" id="input-nilai-${tg.id}" value="${valNilaiForm}" placeholder="Nilai" min="0" max="100" class="p-2 border rounded-lg text-xs font-bold text-center">
+                                    <input type="text" id="input-catatan-${tg.id}" value="${valFeedbackForm}" placeholder="Catatan / Feedback..." class="p-2 border rounded-lg text-xs">
                                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 text-xs font-bold rounded-lg transition">Update / Simpan Nilai</button>
                                 </form>
                             </div>`;
@@ -1710,7 +2090,7 @@
 
                             <div class="flex flex-wrap gap-2 pt-1 border-t">
                                 ${j.file_name ? `<button onclick="catatAbsenDanAkses(${j.id}, '${j.jam_mulai}', '${j.jam_selesai}'); bukaViewerFile('${j.file_name}',${safeSiswaUrl})" class="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs border border-green-200 font-bold flex items-center gap-1 transition">📄 Lihat Modul: ${j.file_name}</button>` : ''}
-                                ${j.link_video ? `<a href="${j.link_video}" target="_blank" onclick="catatAbsenDanAkses(${j.id}, '${j.jam_mulai}', '${j.jam_selesai}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs border border-green-200 font-bold flex items-center gap-1 transition">🔗 Buka Link/Video</a>` : ''}
+                                ${j.link_video ? `<a href="${j.link_video}" target="_blank" onclick="catatAbsenDanAkses(${j.id}, '${j.jam_mulai}', '${j.jam_selesai}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs border border-blue-200 font-bold flex items-center gap-1 transition">🔗 Buka Link/Video</a>` : ''}
                             </div>
 
                             ${isMateriAktif ? `
@@ -1731,6 +2111,11 @@
                                     <div class="text-xs text-gray-500 mt-0.5">📅 ${formatTanggalID(j.tanggal)} (${j.hari || '-'})</div>
                                 </div>
                                 <span class="bg-green-100 text-green-800 text-xs px-2.5 py-1 rounded-full font-bold">✓ Tugas Telah Dikirim</span>
+                            </div>
+
+                            <div class="flex flex-wrap gap-2 pt-1 border-t">
+                                ${j.file_name ? `<button onclick="bukaViewerFile('${j.file_name}',${safeSiswaUrl})" class="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs border border-green-200 font-bold flex items-center gap-1 transition">📄 Baca Modul Pelajaran: ${j.file_name}</button>` : ''}
+                                ${j.link_video ? `<a href="${j.link_video}" target="_blank" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs border border-blue-200 font-bold flex items-center gap-1 transition">🔗 Buka Link/Video Pembelajaran</a>` : ''}
                             </div>
 
                             <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg text-xs space-y-2">
