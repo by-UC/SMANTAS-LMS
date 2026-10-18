@@ -54,7 +54,6 @@
             <div class="flex items-center space-x-2 sm:space-x-4">
                 <span id="user-info-badge" class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs sm:text-sm font-bold">Role</span>
                 
-                <!-- TOMBOL GANTI PASSWORD (HANYA GURU & SISWA) -->
                 <button id="btn-ganti-password-self" onclick="bukaModalGantiPasswordSelf()" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">
                     🔑 Ganti Password
                 </button>
@@ -117,9 +116,7 @@
                                                 <th class="p-2 border border-gray-300">Istirahat 4</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="tbody-matrix-kbm">
-                                            <!-- Generated via JS -->
-                                        </tbody>
+                                        <tbody id="tbody-matrix-kbm"></tbody>
                                     </table>
                                 </div>
                                 <div class="bg-gray-100 px-6 py-3 flex justify-end gap-2 border-t">
@@ -139,7 +136,6 @@
                             </button>
                         </div>
 
-                        <!-- Upload Massal Data Guru Excel -->
                         <div class="bg-purple-50 border border-purple-200 p-4 rounded-xl space-y-3 max-w-lg">
                             <h4 class="font-bold text-purple-900 text-xs uppercase tracking-wide">📂 Upload Excel Data Guru (.xlsx / .xls)</h4>
                             <p class="text-[11px] text-purple-700">Unggah file Excel sesuai template untuk mendaftarkan banyak guru sekaligus.</p>
@@ -171,7 +167,6 @@
                             </div>
                         </div>
 
-                        <!-- Form Upload File Excel Siswa -->
                         <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-3 max-w-lg">
                             <h4 class="font-bold text-blue-900 text-xs uppercase tracking-wide">📂 Upload File Excel Siswa (.xlsx / .xls)</h4>
                             <p class="text-[11px] text-blue-700">Unggah file Excel sesuai template untuk memasukkan banyak siswa sekaligus secara otomatis.</p>
@@ -233,7 +228,6 @@
                             </form>
                         </div>
 
-                        <!-- Panel Backup & Restore Database Admin -->
                         <div class="border-t pt-4 space-y-4">
                             <h3 class="text-base font-bold text-gray-800">💾 Backup & Restore Database LMS</h3>
                             
@@ -304,7 +298,7 @@
                                 
                                 <div>
                                     <label class="block text-xs font-bold text-gray-600 mb-1">Unggah Lampiran Modul (Gambar, Word, atau PDF):</label>
-                                    <p class="text-[11px] text-gray-400 mb-1">Format: .jpg, .jpeg, .png, .doc, .docx, .pdf (Maks 5 MB)</p>
+                                    <p class="text-[11px] text-blue-600 font-semibold mb-1">💡 File gambar dikompres otomatis & Max ukuran file 500 KB (Hemat Kuota)</p>
                                     <input type="file" id="input-jadwal-file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" class="w-full text-xs border p-2 rounded-lg bg-gray-50">
                                 </div>
 
@@ -355,7 +349,6 @@
                             </div>
                         </div>
 
-                        <!-- Pengaturan Default Nilai & Feedback Guru -->
                         <div class="space-y-3 pt-4 border-t">
                             <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-2">
                                 <h4 class="font-bold text-blue-900 text-xs uppercase tracking-wide">⚙️ Pengaturan Default Penilaian Guru</h4>
@@ -398,7 +391,7 @@
         </main>
     </div>
 
-    <!-- MODAL GANTI PASSWORD SISWA / GURU (SELF SERVICE) -->
+    <!-- MODAL GANTI PASSWORD SISWA / GURU -->
     <div id="ganti-password-modal" class="hidden fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col">
             <div class="bg-amber-500 text-white px-6 py-4 flex justify-between items-center">
@@ -437,7 +430,7 @@
         </div>
     </div>
 
-    <!-- MODAL DETAIL SISWA (POP-UP STATISTIK ADMIN) -->
+    <!-- MODAL DETAIL SISWA -->
     <div id="siswa-detail-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-60 flex justify-center items-center p-4">
         <div class="bg-white w-full max-w-lg rounded-2xl flex flex-col shadow-2xl overflow-hidden max-h-[80vh]">
             <div id="siswa-modal-header" class="bg-blue-600 text-white px-5 py-4 flex justify-between items-center">
@@ -450,7 +443,7 @@
         </div>
     </div>
 
-    <!-- ================= SKRIP SUPABASE & APLIKASI ================= -->
+    <!-- ================= SKRIP SUPABASE & LOGIK APLIKASI ================= -->
     <script>
         const SUPABASE_URL = 'https://ofkbqldiislvxirqrubh.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_2KQqp96rlQZZswOwUVWZpg_bJ3zso28';
@@ -487,7 +480,93 @@
             }
         });
 
-        // ------------------ FITUR GANTI PASSWORD DIRI SENDIRI ------------------
+        // ------------------ ENGINES KOMPRESI GAMBAR & VALIDASI CLIENT-SIDE ------------------
+        async function compressImageFile(file, maxWidth = 1000, quality = 0.55) {
+            return new Promise((resolve, reject) => {
+                if (!file.type.startsWith('image/')) {
+                    resolve(file);
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        canvas.toBlob(
+                            (blob) => {
+                                if (!blob) {
+                                    resolve(file);
+                                    return;
+                                }
+                                const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now()
+                                });
+                                console.log(`[Kompresi] Ukuran Asli: ${(file.size/1024).toFixed(1)} KB -> Hasil: ${(compressedFile.size/1024).toFixed(1)} KB`);
+                                resolve(compressedFile);
+                            },
+                            'image/jpeg',
+                            quality
+                        );
+                    };
+                    img.onerror = (err) => reject(err);
+                };
+                reader.onerror = (err) => reject(err);
+            });
+        }
+
+        async function processAndValidateFile(fileInput) {
+            if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                return null;
+            }
+
+            let file = fileInput.files[0];
+            const fileNameLower = file.name.toLowerCase();
+            const allowedExtensions = ['.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg'];
+            const isValid = allowedExtensions.some(ext => fileNameLower.endsWith(ext));
+
+            if (!isValid) {
+                alert('Format file tidak diizinkan! Hanya file Gambar (JPG/PNG), Word (DOC/docx), dan PDF yang diperbolehkan.');
+                return false;
+            }
+
+            // Kompresi jika berupa Gambar
+            if (file.type.startsWith('image/') || fileNameLower.match(/\.(jpg|jpeg|png)$/)) {
+                try {
+                    file = await compressImageFile(file, 1000, 0.55);
+                } catch (e) {
+                    console.warn('Kompresi gambar gagal, menggunakan file asli:', e);
+                }
+            }
+
+            // Batasi Ukuran Maksimal File setelah diproses (Max 500 KB) untuk hemat kuota
+            const MAX_SIZE_BYTES = 500 * 1024; // 500 KB
+            if (file.size > MAX_SIZE_BYTES) {
+                alert(`Ukuran file terlalu besar (${(file.size / 1024).toFixed(1)} KB)!\n\nMaksimal batas ukuran file adalah 500 KB agar hemat kuota sistem.`);
+                return false;
+            }
+
+            return file;
+        }
+
+        // ------------------ FITUR GANTI PASSWORD ------------------
         function bukaModalGantiPasswordSelf() {
             document.getElementById('ganti-password-modal').classList.remove('hidden');
         }
@@ -641,7 +720,7 @@
             reader.readAsText(file);
         }
 
-        // DOWNLOAD TEMPLATE EXCEL & UPLOAD MASSAL GURU
+        // EXCEL GURU & SISWA
         function downloadTemplateGuruExcel() {
             let templateData = [
                 { "Nama": "Drs. Budi Santoso, M.Pd.", "Mapel": "KIMIA, BIOLOGI", "Username": "budisantoso", "Password": "password123" },
@@ -1011,26 +1090,6 @@
             return now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' WIB';
         }
 
-        function validateFileType(file) {
-            if (!file) return false;
-            
-            // Limit Ukuran File untuk Menghemat Bandwidth 1000+ Siswa (Max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                alert('Ukuran file terlalu besar! Maksimal ukuran file adalah 5 MB.');
-                return false;
-            }
-
-            const fileNameLower = file.name.toLowerCase();
-            const allowedExtensions = ['.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg'];
-            const isValid = allowedExtensions.some(ext => fileNameLower.endsWith(ext));
-            
-            if (!isValid) {
-                alert('Format file tidak diizinkan! Hanya file Gambar (JPG/PNG), Word (DOC/docx), dan PDF yang diperbolehkan.');
-                return false;
-            }
-            return true;
-        }
-
         async function uploadFileToSupabase(file) {
             if (!file) return null;
             const fileExt = file.name.split('.').pop();
@@ -1160,7 +1219,6 @@
             document.getElementById(`content-${currentUser.role}`).classList.remove('hidden');
             document.getElementById('user-info-badge').innerText = `${currentUser.nama} (${currentUser.role.toUpperCase()})`;
 
-            // Tampilkan Tombol Ganti Password jika Role = Guru / Siswa
             const btnSelfPass = document.getElementById('btn-ganti-password-self');
             if (currentUser.role === 'guru' || currentUser.role === 'siswa') {
                 btnSelfPass.classList.remove('hidden');
@@ -1509,10 +1567,10 @@
             let file_url = null;
 
             if (fileInput.files.length > 0) {
-                const rawFile = fileInput.files[0];
-                if (!validateFileType(rawFile)) return;
-                
-                const uploaded = await uploadFileToSupabase(rawFile);
+                const processedFile = await processAndValidateFile(fileInput);
+                if (!processedFile) return;
+
+                const uploaded = await uploadFileToSupabase(processedFile);
                 if (uploaded) {
                     file_name = uploaded.name;
                     file_url = uploaded.url;
@@ -1637,10 +1695,10 @@
             let file_url = null;
 
             if (fileInput && fileInput.files.length > 0) {
-                const rawFile = fileInput.files[0];
-                if (!validateFileType(rawFile)) return;
+                const processedFile = await processAndValidateFile(fileInput);
+                if (!processedFile) return;
                 
-                const uploaded = await uploadFileToSupabase(rawFile);
+                const uploaded = await uploadFileToSupabase(processedFile);
                 if (uploaded) {
                     file_name = uploaded.name;
                     file_url = uploaded.url;
@@ -1659,7 +1717,7 @@
                 waktu_kirim: `${getWaktuWIB()}`
             }]);
 
-            if (error) { alert('Gagal: ' + error.message); return; }
+            if (error) { alert('Gagal mengirim tugas: ' + error.message); return; }
             alert('Tugas terkirim!');
             renderData();
         }
@@ -1688,10 +1746,10 @@
             let file_name = null;
             let file_url = null;
             if (fileInput && fileInput.files.length > 0) {
-                const rawFile = fileInput.files[0];
-                if (!validateFileType(rawFile)) return;
+                const processedFile = await processAndValidateFile(fileInput);
+                if (!processedFile) return;
                 
-                const uploaded = await uploadFileToSupabase(rawFile);
+                const uploaded = await uploadFileToSupabase(processedFile);
                 if (uploaded) {
                     file_name = uploaded.name;
                     file_url = uploaded.url;
@@ -1809,11 +1867,10 @@
             XLSX.writeFile(workbook, `Rekap_Absensi_${cleanMapel}_${cleanKelas}_${cleanGuru}.xlsx`);
         }
 
-        // OPTIMALISASI RENDER DATA DENGAN TARGET KUERI TERFOKUS UNTUK 1000+ SISWA
         async function renderData() {
             if (!currentUser) return;
 
-            // 1. JIKA SISWA: KUERI TERFOKUS (Sangat Ringan, Kuat untuk 1000+ Siswa)
+            // SISWA: KUERI TERFOKUS
             if (currentUser.role === 'siswa') {
                 const [{ data: listJadwal }, { data: listAbsen }, { data: listTugas }] = await Promise.all([
                     supabaseClient.from('jadwal').select('*').eq('kelas', currentUser.kelas),
@@ -1906,7 +1963,7 @@
                 return;
             }
 
-            // 2. JIKA ADMIN / GURU: LOAD DATA LENGKAP
+            // ADMIN / GURU: LOAD DASHBOARD & MONITORING
             const [{ count: cKelas }, { count: cGuru }, { count: cSiswa }] = await Promise.all([
                 supabaseClient.from('kelas').select('*', { count: 'exact', head: true }),
                 supabaseClient.from('guru').select('*', { count: 'exact', head: true }),
