@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- SheetJS (XLSX) Library untuk Ekspor Excel -->
+    <!-- SheetJS (XLSX) Library untuk Ekspor & Baca Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-gray-50 font-sans antialiased text-gray-800">
@@ -144,13 +144,29 @@
                     <!-- Tab Siswa -->
                     <div id="admin-tab-siswa" class="admin-tab-content hidden space-y-4">
                         <div class="flex flex-wrap justify-between items-center gap-2">
-                            <h3 class="text-base font-bold text-gray-800">Bulk Upload Siswa & Data Siswa</h3>
-                            <button onclick="handleDeleteAllSiswa()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition">🗑️ Hapus Semua Siswa</button>
+                            <h3 class="text-base font-bold text-gray-800">Upload & Manajemen Data Siswa</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="downloadTemplateSiswaExcel()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1">📥 Download Template Form Siswa</button>
+                                <button onclick="handleDeleteAllSiswa()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition">🗑️ Hapus Semua Siswa</button>
+                            </div>
                         </div>
-                        <form onsubmit="handleBulkUploadSiswa(event)" class="space-y-3 max-w-lg">
-                            <textarea id="input-bulk-siswa" rows="3" required class="w-full p-2.5 border text-xs rounded-lg font-mono" placeholder="Format: nama, kelas, username, password"></textarea>
-                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm">Proses Upload</button>
-                        </form>
+
+                        <!-- Form Upload File Excel Siswa -->
+                        <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-3 max-w-lg">
+                            <h4 class="font-bold text-blue-900 text-xs uppercase tracking-wide">📂 Upload File Excel Siswa (.xlsx / .xls)</h4>
+                            <p class="text-[11px] text-blue-700">Unggah file Excel sesuai template untuk memasukkan banyak siswa sekaligus secara otomatis.</p>
+                            <input type="file" id="input-excel-siswa" accept=".xlsx, .xls" class="w-full text-xs border p-2 rounded-lg bg-white">
+                            <button onclick="handleUploadExcelSiswa()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs w-full transition">Proses Upload File Excel</button>
+                        </div>
+
+                        <!-- Alternatif Bulk Upload Text -->
+                        <details class="text-xs text-gray-500 max-w-lg">
+                            <summary class="cursor-pointer font-bold text-blue-600">Atau gunakan Text Manual / Paste CSV</summary>
+                            <form onsubmit="handleBulkUploadSiswa(event)" class="space-y-3 mt-2">
+                                <textarea id="input-bulk-siswa" rows="3" class="w-full p-2.5 border text-xs rounded-lg font-mono" placeholder="Format: nama, kelas, username, password"></textarea>
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg text-xs">Proses Upload Teks</button>
+                            </form>
+                        </details>
 
                         <!-- Form Edit Single Siswa -->
                         <div id="form-edit-siswa-container" class="hidden bg-amber-50 p-4 rounded-xl border border-amber-200 max-w-lg space-y-3">
@@ -402,6 +418,85 @@
             }
         });
 
+        // FUNGSI DOWNLOAD TEMPLATE EXCEL FORM SISWA
+        function downloadTemplateSiswaExcel() {
+            let templateData = [
+                { "Nama": "Contoh Nama Siswa 1", "Kelas": "X-1", "Username": "siswa1", "Password": "password123" },
+                { "Nama": "Contoh Nama Siswa 2", "Kelas": "X-1", "Username": "siswa2", "Password": "password123" }
+            ];
+
+            const worksheet = XLSX.utils.json_to_sheet(templateData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Template Siswa");
+            XLSX.writeFile(workbook, "Template_Form_Siswa.xlsx");
+        }
+
+        // FUNGSI UPLOAD FILE EXCEL SISWA
+        async function handleUploadExcelSiswa() {
+            const fileInput = document.getElementById('input-excel-siswa');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Silakan pilih file Excel terlebih dahulu!');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Convert Excel to JSON
+                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                    if (!jsonRows || jsonRows.length === 0) {
+                        alert('File Excel kosong atau format tidak sesuai.');
+                        return;
+                    }
+
+                    let formattedRows = [];
+                    jsonRows.forEach(row => {
+                        // Mencari key case-insensitive (Nama/nama, Kelas/kelas, dll)
+                        const nama = row['Nama'] || row['nama'] || row['NAMA'] || '';
+                        const kelas = row['Kelas'] || row['kelas'] || row['KELAS'] || '';
+                        const username = row['Username'] || row['username'] || row['USERNAME'] || '';
+                        const password = row['Password'] || row['password'] || row['PASSWORD'] || '';
+
+                        if (nama && kelas && username && password) {
+                            formattedRows.push({
+                                nama: String(nama).trim(),
+                                kelas: String(kelas).trim(),
+                                username: String(username).trim(),
+                                password: String(password).trim()
+                            });
+                        }
+                    });
+
+                    if (formattedRows.length === 0) {
+                        alert('Tidak ada data siswa valid yang ditemukan di file Excel. Pastikan kolom bernama: Nama, Kelas, Username, Password.');
+                        return;
+                    }
+
+                    const { error } = await supabaseClient.from('siswa').insert(formattedRows);
+                    if (error) {
+                        alert('Gagal mengupload ke database: ' + error.message);
+                        return;
+                    }
+
+                    alert(`Berhasil mengupload ${formattedRows.length} data siswa dari file Excel!`);
+                    fileInput.value = '';
+                    renderData();
+                } catch (err) {
+                    alert('Terjadi kesalahan saat membaca file Excel: ' + err.message);
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
         function updateOtomatisHari() {
             const dateVal = document.getElementById('input-jadwal-tanggal').value;
             if (!dateVal) return;
@@ -443,15 +538,6 @@
             const clean = tStr.replace('.', ':').trim();
             const [h, m] = clean.split(':').map(Number);
             return (h || 0) * 60 + (m || 0);
-        }
-
-        function minToTimeStr(totalMin) {
-            if (totalMin <= 0) return "0 Menit";
-            const h = Math.floor(totalMin / 60);
-            const m = totalMin % 60;
-            if (h === 0) return `${m} Menit`;
-            if (m === 0) return `${h} Jam`;
-            return `${h} Jam ${m} Menit`;
         }
 
         function formatMinToTime(min) {
@@ -651,7 +737,6 @@
             }
         }
 
-        // ================= LOGIKA EDITOR MATRIX JAM KBM PER KELAS =================
         function bukaModalKbm(namaKelas) {
             selectedKelasForKbm = namaKelas;
             document.getElementById('label-kelas-kbm').innerText = namaKelas;
@@ -1335,7 +1420,7 @@
                 }
             }
 
-            // DASHBOARD LIVE MONITORING ADMIN (SESUAI GAMBAR REFERENSI & PERMINTAAN)
+            // DASHBOARD LIVE MONITORING ADMIN
             const monitoringContainer = document.getElementById('live-monitoring-container');
             if (monitoringContainer && listKelas) {
                 const todayObj = new Date();
@@ -1367,14 +1452,11 @@
                         });
                     }
 
-                    // Urutkan jadwal hari ini berdasarkan jam mulai
                     jadwalHariIni.sort((a, b) => timeToMin(a.jam_mulai) - timeToMin(b.jam_mulai));
 
-                    // HITUNG RENTANG JAM KOSONG (KBM MINUS JAM ISI & ISTIRAHAT)
                     let startKbmMin = timeToMin(jamMulaiStr);
                     let endKbmMin = timeToMin(jamSelesaiStr);
 
-                    // Kumpulkan semua blok waktu sibuk (jam isi + istirahat)
                     let busyBlocks = [];
                     jadwalHariIni.forEach(j => {
                         busyBlocks.push({ start: timeToMin(j.jam_mulai), end: timeToMin(j.jam_selesai) });
@@ -1384,10 +1466,8 @@
                         busyBlocks.push({ start: timeToMin(p1), end: timeToMin(p2) });
                     });
 
-                    // Urutkan blok sibuk
                     busyBlocks.sort((a, b) => a.start - b.start);
 
-                    // Cari celah kosong
                     let emptyIntervals = [];
                     let pointer = startKbmMin;
 
@@ -1404,7 +1484,6 @@
                         emptyIntervals.push({ start: pointer, end: endKbmMin });
                     }
 
-                    // Render Tombol Kotak Hijau (Jam Isi) dengan Pop-up Detail Materi/Guru
                     const jsonJadwalHariIni = JSON.stringify(jadwalHariIni.map(j => ({
                         mapel: j.mapel,
                         pengampu: j.pengampu || 'Guru Pengampu',
@@ -1420,7 +1499,6 @@
                                 <div class="text-sm">Belum Ada Jam Isi</div>
                            </div>`;
 
-                    // Render Kotak Merah (Jam Kosong per Rentang Waktu)
                     let jamKosongBoxesHtml = '';
                     if (emptyIntervals.length > 0) {
                         jamKosongBoxesHtml = emptyIntervals.map(interval => {
@@ -1453,7 +1531,6 @@
                             </div>
                         </div>
                         
-                        <!-- Tampilan Grid Jam Isi (Hijau) & Jam Kosong (Merah) Persis Gambar -->
                         <div class="flex flex-wrap gap-2 items-stretch">
                             ${jamIsiBtnHtml}
                             ${jamKosongBoxesHtml}
@@ -1462,7 +1539,6 @@
                 }).join('');
             }
 
-            // DAFTAR KELOLA MATERI OLEH GURU
             const divPengumpulan = document.getElementById('list-pengumpulan-guru');
             if (divPengumpulan && currentUser?.role === 'guru' && listJadwal) {
                 const myJadwalGuru = listJadwal.filter(j => j.pengampu === currentUser.nama);
@@ -1669,7 +1745,6 @@
                                 </div>
                             </div>
 
-                            <!-- FORM EDIT TUGAS SISWA -->
                             <form id="form-edit-tugas-${j.id}" onsubmit="handleUpdateTugasSiswa(event, ${tg.id},${j.id})" class="hidden space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs">
                                 <h5 class="font-bold text-amber-800">Form Remedial / Edit Pengiriman Tugas:</h5>
                                 <textarea id="edit-jawaban-teks-${j.id}" rows="2" class="w-full border p-2 text-xs rounded-lg bg-white" required>${tg.teks_jawaban}</textarea>
@@ -1689,7 +1764,6 @@
             }
         }
 
-        // FUNGSI POP-UP KETIKA TOMBOL "JAM ISI" DIKLIK DI LIVE MONITORING
         function showJamIsiModal(title, listMateri) {
             const modal = document.getElementById('siswa-detail-modal');
             const titleEl = document.getElementById('siswa-modal-title');
