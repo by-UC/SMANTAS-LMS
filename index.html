@@ -191,11 +191,11 @@
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
                                         <label class="block text-[11px] font-bold text-gray-600 mb-1">Jam Mulai</label>
-                                        <input type="time" id="input-jam-mulai" required value="08:00" class="w-full p-2 border rounded-lg text-xs">
+                                        <input type="time" id="input-jam-mulai" required value="08:00" onchange="updateJamSelesaiOtomatis()" class="w-full p-2 border rounded-lg text-xs">
                                     </div>
                                     <div>
                                         <label class="block text-[11px] font-bold text-gray-600 mb-1">Jam Selesai</label>
-                                        <input type="time" id="input-jam-selesai" required value="10:00" class="w-full p-2 border rounded-lg text-xs">
+                                        <input type="time" id="input-jam-selesai" required value="08:45" class="w-full p-2 border rounded-lg text-xs">
                                     </div>
                                 </div>
 
@@ -279,9 +279,23 @@
             <!-- DASHBOARD SISWA -->
             <div id="content-siswa" class="role-content hidden space-y-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Siswa</h2>
-                <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
-                    <h3 class="text-base font-bold text-gray-800">Materi & Status Pengiriman Tugas</h3>
-                    <div id="list-jadwal-siswa" class="space-y-4"></div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Bagian 1: Daftar Materi Tugas yang Belum Dikerjakan -->
+                    <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
+                        <h3 class="text-base font-bold text-amber-700 flex items-center gap-2">
+                            <span>📌</span> Materi & Tugas Belum Dikerjakan
+                        </h3>
+                        <div id="list-jadwal-belum" class="space-y-4 max-h-[600px] overflow-y-auto"></div>
+                    </div>
+
+                    <!-- Bagian 2: Daftar Nilai dan Pengiriman Tugas -->
+                    <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
+                        <h3 class="text-base font-bold text-green-700 flex items-center gap-2">
+                            <span>✅</span> Nilai & Riwayat Pengiriman Tugas
+                        </h3>
+                        <div id="list-jadwal-sudah" class="space-y-4 max-h-[600px] overflow-y-auto"></div>
+                    </div>
                 </div>
             </div>
 
@@ -297,6 +311,19 @@
             </div>
             <div id="file-modal-body" class="flex-1 bg-gray-100 p-2 overflow-auto flex justify-center items-center">
                 <!-- Konten dinamis penampil file -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETAIL SISWA (POP-UP STATISTIK ADMIN) -->
+    <div id="siswa-detail-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-60 flex justify-center items-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl flex flex-col shadow-2xl overflow-hidden max-h-[80vh]">
+            <div id="siswa-modal-header" class="bg-blue-600 text-white px-5 py-4 flex justify-between items-center">
+                <h3 id="siswa-modal-title" class="font-bold text-sm sm:text-base">Detail Siswa</h3>
+                <button onclick="closeSiswaModal()" class="text-white hover:bg-blue-700 px-3 py-1 rounded-lg font-bold text-lg">✕</button>
+            </div>
+            <div class="p-4 overflow-y-auto">
+                <ul id="siswa-modal-list" class="divide-y divide-gray-100"></ul>
             </div>
         </div>
     </div>
@@ -337,6 +364,23 @@
             document.getElementById('input-jadwal-hari').value = hariStr;
         }
 
+        // Fungsi otomatis jam selesai 45 menit setelah jam mulai
+        function updateJamSelesaiOtomatis() {
+            const jamMulaiVal = document.getElementById('input-jam-mulai').value;
+            if (!jamMulaiVal) return;
+
+            const [hours, minutes] = jamMulaiVal.split(':').map(Number);
+            let totalMinutes = hours * 60 + minutes + 45; // Tambah 45 menit
+
+            const newHours = Math.floor(totalMinutes / 60) % 24;
+            const newMinutes = totalMinutes % 60;
+
+            const formattedHours = String(newHours).padStart(2, '0');
+            const formattedMinutes = String(newMinutes).padStart(2, '0');
+
+            document.getElementById('input-jam-selesai').value = `${formattedHours}:${formattedMinutes}`;
+        }
+
         function formatTanggalID(dateStr) {
             if (!dateStr) return '-';
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -366,7 +410,6 @@
             return true;
         }
 
-        // Fungsi mengunggah file langsung ke Supabase Storage Bucket 'lms-files'
         async function uploadFileToSupabase(file) {
             if (!file) return null;
             const fileExt = file.name.split('.').pop();
@@ -381,7 +424,6 @@
                 return null;
             }
 
-            // Ambil Public URL dari file yang diupload
             const { data: publicUrlData } = supabaseClient.storage
                 .from('lms-files')
                 .getPublicUrl(fileNameUnique);
@@ -392,7 +434,6 @@
             };
         }
 
-        // Penampil Berkas (PDF / Document / Image Viewer) Universal untuk Guru & Siswa menggunakan URL Storage
         function bukaViewerFile(fileName, fileUrl) {
             const modal = document.getElementById('file-modal');
             const title = document.getElementById('file-modal-title');
@@ -434,6 +475,32 @@
             const body = document.getElementById('file-modal-body');
             body.innerHTML = '';
             modal.classList.add('hidden');
+        }
+
+        function showSiswaModal(title, siswaList, colorClass = 'bg-blue-600') {
+            const modal = document.getElementById('siswa-detail-modal');
+            const titleEl = document.getElementById('siswa-modal-title');
+            const headerEl = document.getElementById('siswa-modal-header');
+            const listEl = document.getElementById('siswa-modal-list');
+
+            titleEl.innerText = title;
+            headerEl.className = `${colorClass} text-white px-5 py-4 flex justify-between items-center`;
+
+            if (siswaList && siswaList.length > 0) {
+                listEl.innerHTML = siswaList.map((nama, idx) => `
+                    <li class="py-2.5 flex items-center justify-between text-xs">
+                        <span class="font-bold text-gray-700">${idx + 1}. ${nama}</span>
+                    </li>
+                `).join('');
+            } else {
+                listEl.innerHTML = `<li class="py-4 text-center text-xs text-gray-400 italic">Tidak ada siswa.</li>`;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeSiswaModal() {
+            document.getElementById('siswa-detail-modal').classList.add('hidden');
         }
 
         async function handleLogin(event) {
@@ -691,6 +758,37 @@
             renderData();
         }
 
+        // FUNGSI CEK BENTROK JAM MENGAJAR GURU
+        function cekJadwalBentrok(tanggalBaru, jamMulaiBaru, jamSelesaiBaru, editId = null) {
+            const namaGuru = currentUser.nama;
+            
+            const timeToMinutes = (timeStr) => {
+                const [h, m] = timeStr.split(':').map(Number);
+                return h * 60 + m;
+            };
+
+            const startBaruMin = timeToMinutes(jamMulaiBaru);
+            const endBaruMin = timeToMinutes(jamSelesaiBaru);
+
+            for (let j of activeJadwalData) {
+                if (editId && j.id == editId) continue;
+
+                const isGuruSama = j.pengampu === namaGuru || (j.mapel && j.mapel.includes(namaGuru));
+
+                if (isGuruSama && j.tanggal === tanggalBaru) {
+                    const startExistingMin = timeToMinutes(j.jam_mulai);
+                    const endExistingMin = timeToMinutes(j.jam_selesai);
+
+                    const isBentrok = (startBaruMin < endExistingMin) && (endBaruMin > startExistingMin);
+
+                    if (isBentrok) {
+                        return { bentrok: true, detailKelas: j.kelas, detailMapel: j.mapel, jam: `${j.jam_mulai} - ${j.jam_selesai}` };
+                    }
+                }
+            }
+            return { bentrok: false };
+        }
+
         async function handleCreateOrUpdateJadwal(event) {
             event.preventDefault();
             const editId = document.getElementById('edit-jadwal-id').value;
@@ -700,6 +798,17 @@
             const jam_mulai = document.getElementById('input-jam-mulai').value;
             const jam_selesai = document.getElementById('input-jam-selesai').value;
             
+            if (jam_mulai >= jam_selesai) {
+                alert('Peringatan: Jam Mulai harus lebih awal daripada Jam Selesai!');
+                return;
+            }
+
+            const cekBentrok = cekJadwalBentrok(tanggal, jam_mulai, jam_selesai, editId ? editId : null);
+            if (cekBentrok.bentrok) {
+                alert(`⚠️ Jadwal Bentrok!\n\nAnda sudah memiliki jadwal mengajar di kelas "${cekBentrok.detailKelas}" (${cekBentrok.detailMapel}) pada jam ${cekBentrok.jam} di tanggal yang sama.`);
+                return;
+            }
+
             const selectedMapel = document.getElementById('input-jadwal-mapel').value;
             const topik = document.getElementById('input-jadwal-topik').value.trim();
             const mapelFull = `${selectedMapel} - ${topik} - ${currentUser.nama}`;
@@ -733,7 +842,8 @@
                     mapel: mapelFull, 
                     file_name: finalFileName, 
                     file_url: finalFileUrl,
-                    link_video: link_video 
+                    link_video: link_video,
+                    pengampu: currentUser.nama
                 };
 
                 const { error } = await supabaseClient.from('jadwal').update(payload).eq('id', editId);
@@ -787,6 +897,7 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('input-jadwal-tanggal').value = today;
             updateOtomatisHari();
+            updateJamSelesaiOtomatis();
 
             document.getElementById('form-jadwal-title').innerText = 'Buat Materi & Pilih Kelas';
             document.getElementById('btn-submit-jadwal').innerText = 'Publikasikan Materi';
@@ -1093,35 +1204,63 @@
 
             const monitoringContainer = document.getElementById('live-monitoring-container');
             if (monitoringContainer && listKelas) {
+                const todayStr = new Date().toISOString().split('T')[0];
+
                 monitoringContainer.innerHTML = listKelas.map(k => {
                     const siswaInKelas = listSiswa?.filter(s => s.kelas === k.nama) || [];
                     const totalSiswa = siswaInKelas.length;
-                    let hadir = 0, terlambat = 0, alpa = 0, kirimTugas = 0;
+                    
+                    const listHadir = [];
+                    const listTerlambat = [];
+                    const listAlpa = [];
+                    const listKirimTugas = [];
 
                     const jadwalKelas = listJadwal?.filter(j => j.kelas === k.nama) || [];
+                    const jadwalHariIni = jadwalKelas.filter(j => j.tanggal === todayStr);
                     
                     siswaInKelas.forEach(s => {
                         const hasSubmitted = listTugas?.some(t => t.nama_siswa === s.nama && jadwalKelas.some(j => j.id === t.jadwal_id));
-                        if (hasSubmitted) kirimTugas++;
+                        if (hasSubmitted) listKirimTugas.push(s.nama);
 
                         const absenList = listAbsen?.filter(a => a.nama_siswa === s.nama && jadwalKelas.some(j => j.id === a.jadwal_id)) || [];
-                        if (absenList.some(a => a.status === 'Hadir')) hadir++;
-                        else if (absenList.some(a => a.status === 'Terlambat')) terlambat++;
-                        else alpa++;
+                        if (absenList.some(a => a.status === 'Hadir')) {
+                            listHadir.push(s.nama);
+                        } else if (absenList.some(a => a.status === 'Terlambat')) {
+                            listTerlambat.push(s.nama);
+                        } else {
+                            listAlpa.push(s.nama);
+                        }
                     });
 
-                    return `<div class="bg-white border p-4 rounded-xl shadow-sm space-y-2">
-                        <div class="flex justify-between items-center font-bold text-sm text-blue-600">
-                            <span>Kelas: ${k.nama}</span>
-                            <span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">Total Siswa: ${totalSiswa}</span>
+                    let statusJamHtml = '';
+                    if (jadwalHariIni.length > 0) {
+                        const listPelajaran = jadwalHariIni.map(j => `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px] font-semibold">${j.mapel} (${j.jam_mulai} - ${j.jam_selesai})</span>`).join(' ');
+                        statusJamHtml = `<div class="bg-green-100 text-green-800 text-xs px-2.5 py-1 rounded-lg font-bold inline-block">🟢 JAM ISI</div>
+                                         <div class="text-xs text-gray-600 mt-1">Materi Hari Ini: ${listPelajaran}</div>`;
+                    } else {
+                        statusJamHtml = `<div class="bg-red-100 text-red-800 text-xs px-2.5 py-1 rounded-lg font-bold inline-block">🔴 JAM KOSONG / Tidak Ada Jadwal</div>`;
+                    }
+
+                    const jsonHadir = JSON.stringify(listHadir).replace(/"/g, '&quot;');
+                    const jsonTerlambat = JSON.stringify(listTerlambat).replace(/"/g, '&quot;');
+                    const jsonAlpa = JSON.stringify(listAlpa).replace(/"/g, '&quot;');
+                    const jsonKirimTugas = JSON.stringify(listKirimTugas).replace(/"/g, '&quot;');
+
+                    return `<div class="bg-white border p-4 rounded-xl shadow-sm space-y-3">
+                        <div class="flex justify-between items-center border-b pb-2 flex-wrap gap-2">
+                            <div>
+                                <span class="font-bold text-sm text-blue-600">Kelas: ${k.nama}</span>
+                                <span class="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded ml-2">Total Siswa: ${totalSiswa}</span>
+                            </div>
+                            <div>${statusJamHtml}</div>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                            <div class="bg-green-50 p-2 rounded border border-green-200"><b>Hadir:</b> ${hadir}</div>
-                            <div class="bg-yellow-50 p-2 rounded border border-yellow-200"><b>Terlambat:</b> ${terlambat}</div>
-                            <div class="bg-red-50 p-2 rounded border border-red-200"><b>Alpa:</b> ${alpa}</div>
-                            <div class="bg-blue-50 p-2 rounded border border-blue-200"><b>Kirim Tugas:</b> ${kirimTugas}</div>
+                            <button onclick="showSiswaModal('Siswa Hadir - Kelas ${k.nama}', ${jsonHadir}, 'bg-green-600')" class="bg-green-50 hover:bg-green-100 p-2 rounded border border-green-200 text-left transition cursor-pointer"><b>Hadir:</b> ${listHadir.length} 🔍</button>
+                            <button onclick="showSiswaModal('Siswa Terlambat - Kelas ${k.nama}', ${jsonTerlambat}, 'bg-amber-600')" class="bg-yellow-50 hover:bg-yellow-100 p-2 rounded border border-yellow-200 text-left transition cursor-pointer"><b>Terlambat:</b> ${listTerlambat.length} 🔍</button>
+                            <button onclick="showSiswaModal('Siswa Alpa - Kelas ${k.nama}', ${jsonAlpa}, 'bg-red-600')" class="bg-red-50 hover:bg-red-100 p-2 rounded border border-red-200 text-left transition cursor-pointer"><b>Alpa:</b> ${listAlpa.length} 🔍</button>
+                            <button onclick="showSiswaModal('Siswa Mengirim Tugas - Kelas ${k.nama}', ${jsonKirimTugas}, 'bg-blue-600')" class="bg-blue-50 hover:bg-blue-100 p-2 rounded border border-blue-200 text-left transition cursor-pointer"><b>Kirim Tugas:</b> ${listKirimTugas.length} 🔍</button>
                         </div>
-                    </div>`;
+                    `;
                 }).join('');
             }
 
@@ -1265,79 +1404,87 @@
                 if (divHasilJawaban) divHasilJawaban.innerHTML = listJawabanHtml || `<div class="p-4 text-center text-gray-400 bg-gray-50 border rounded-xl text-xs">Belum ada tugas yang dikirimkan oleh siswa.</div>`;
             }
 
-            const divSiswaJadwal = document.getElementById('list-jadwal-siswa');
-            if (divSiswaJadwal && currentUser?.role === 'siswa' && listJadwal) {
+            const divSiswaBelum = document.getElementById('list-jadwal-belum');
+            const divSiswaSudah = document.getElementById('list-jadwal-sudah');
+
+            if ((divSiswaBelum || divSiswaSudah) && currentUser?.role === 'siswa' && listJadwal) {
                 const myJadwal = listJadwal.filter(j => j.kelas === currentUser.kelas);
                 
-                divSiswaJadwal.innerHTML = myJadwal.map(j => {
+                let htmlBelum = '';
+                let htmlSudah = '';
+
+                myJadwal.forEach(j => {
                     const ab = listAbsen?.find(a => a.jadwal_id === j.id && a.nama_siswa === currentUser.nama);
                     const tg = listTugas?.find(t => t.jadwal_id === j.id && t.nama_siswa === currentUser.nama);
                     const sudahKirim = !!tg;
                     const izinRemedial = tg && tg.izin_perbaikan === true;
-
                     let isMateriAktif = j.status_tugas === 'aktif';
                     const safeSiswaUrl = j.file_url ? `'${j.file_url}'` : 'null';
 
-                    let statusInfo = '';
-                    if (sudahKirim) {
-                        statusInfo = `<span class="bg-green-100 text-green-800 text-xs px-2.5 py-1 rounded-full font-bold">✓ Tugas Telah Dikirim</span>`;
-                    } else if (j.status_tugas !== 'aktif') {
-                        statusInfo = `<span class="bg-red-100 text-red-800 text-xs px-2.5 py-1 rounded-full font-bold">Materi Dihentikan oleh Guru</span>`;
+                    if (!sudahKirim) {
+                        htmlBelum += `<div class="bg-white border p-4 rounded-xl space-y-3 shadow-sm border-l-4 border-l-amber-500">
+                            <div class="flex justify-between items-center flex-wrap gap-2">
+                                <div>
+                                    <span class="font-bold text-sm text-gray-800">${j.mapel}</span>
+                                    <div class="text-xs text-gray-500 mt-0.5">📅 ${formatTanggalID(j.tanggal)} (${j.hari || '-'}) | ⏰ ${j.jam_mulai} - ${j.jam_selesai} WIB</div>
+                                </div>
+                                ${isMateriAktif ? '<span class="bg-yellow-100 text-yellow-800 text-xs px-2.5 py-1 rounded-full font-bold">Materi Aktif</span>' : '<span class="bg-red-100 text-red-800 text-xs px-2.5 py-1 rounded-full font-bold">Materi Dihentikan</span>'}
+                            </div>
+
+                            <div class="flex flex-wrap gap-2 pt-1 border-t">
+                                ${j.file_name ? `<button onclick="catatAbsenDanAkses(${j.id}, '${j.jam_mulai}', '${j.jam_selesai}'); bukaViewerFile('${j.file_name}',${safeSiswaUrl})" class="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs border border-green-200 font-bold flex items-center gap-1 transition">📄 Lihat Modul: ${j.file_name}</button>` : ''}
+                                ${j.link_video ? `<a href="${j.link_video}" target="_blank" onclick="catatAbsenDanAkses(${j.id}, '${j.jam_mulai}', '${j.jam_selesai}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs border border-green-200 font-bold flex items-center gap-1 transition">🔗 Buka Link/Video</a>` : ''}
+                            </div>
+
+                            ${isMateriAktif ? `
+                            <form onsubmit="catatAbsenDanAkses(${j.id}, '${j.jam_mulai}', '${j.jam_selesai}'); handleKirimTugas(event,${j.id})" class="space-y-2 pt-2 border-t">
+                                <textarea id="jawaban-teks-${j.id}" rows="2" class="w-full border p-2 text-xs rounded-lg" placeholder="Ketik jawaban tugas..." required></textarea>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-gray-600 mb-0.5">Lampirkan File Tugas :</label>
+                                    <input type="file" id="jawaban-file-${j.id}" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" class="w-full text-xs border p-1 rounded-lg bg-gray-50">
+                                </div>
+                                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 text-xs font-bold rounded-lg transition">Kirim Tugas</button>
+                            </form>` : `<p class="text-xs text-gray-400 italic pt-2 border-t">Pengiriman tugas sedang tidak aktif/ditutup oleh guru.</p>`}
+                        </div>`;
                     } else {
-                        statusInfo = `<span class="bg-yellow-100 text-yellow-800 text-xs px-2.5 py-1 rounded-full font-bold">Materi Aktif - Belum Mengirim Tugas</span>`;
+                        htmlSudah += `<div class="bg-white border p-4 rounded-xl space-y-3 shadow-sm border-l-4 border-l-green-500">
+                            <div class="flex justify-between items-center flex-wrap gap-2">
+                                <div>
+                                    <span class="font-bold text-sm text-gray-800">${j.mapel}</span>
+                                    <div class="text-xs text-gray-500 mt-0.5">📅 ${formatTanggalID(j.tanggal)} (${j.hari || '-'})</div>
+                                </div>
+                                <span class="bg-green-100 text-green-800 text-xs px-2.5 py-1 rounded-full font-bold">✓ Tugas Telah Dikirim</span>
+                            </div>
+
+                            <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg text-xs space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-blue-800">Hasil & Penilaian Guru:</span>
+                                    ${izinRemedial ? `<button onclick="toggleEditTugasForm(${j.id})" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-2.5 py-1 rounded text-[11px] transition">✏️ Edit Tugas (Remedial Aktif)</button>` : `<span class="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[11px] font-semibold italic">🔒 Terkunci (Menunggu Izin Guru)</span>`}
+                                </div>
+                                <div>Nilai: <span class="font-black text-blue-900 text-sm">${tg.nilai !== null && tg.nilai !== undefined ? tg.nilai : 'Belum Dinilai'}</span></div>
+                                <div>Catatan Guru: <span class="italic text-gray-700">${tg.catatan_guru || 'Tidak ada catatan'}</span></div>
+                                <div class="border-t border-blue-200 pt-1 text-[11px] text-gray-600">
+                                    <b>Jawaban Teks Terkirim:</b> ${tg.teks_jawaban}${tg.file_name && tg.file_name !== 'Tanpa File' ? `<br><b>File Lampiran:</b> <span class="font-mono text-blue-700">${tg.file_name}</span>` : ''}
+                                </div>
+                            </div>
+
+                            <!-- FORM EDIT TUGAS SISWA -->
+                            <form id="form-edit-tugas-${j.id}" onsubmit="handleUpdateTugasSiswa(event, ${tg.id},${j.id})" class="hidden space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs">
+                                <h5 class="font-bold text-amber-800">Form Remedial / Edit Pengiriman Tugas:</h5>
+                                <textarea id="edit-jawaban-teks-${j.id}" rows="2" class="w-full border p-2 text-xs rounded-lg bg-white" required>${tg.teks_jawaban}</textarea>
+                                <label class="block text-[11px] text-gray-600 font-semibold">Ganti File Lampiran (Gambar, Word, atau PDF):</label>
+                                <input type="file" id="edit-jawaban-file-${j.id}" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" class="w-full text-xs border p-1 rounded-lg bg-white">
+                                <div class="flex gap-2">
+                                    <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-1.5 rounded-lg font-bold">Kirim Ulang Tugas</button>
+                                    <button type="button" onclick="toggleEditTugasForm(${j.id})" class="bg-gray-400 hover:bg-gray-500 text-white py-1.5 px-3 rounded-lg font-bold">Tutup</button>
+                                </div>
+                            </form>
+                        </div>`;
                     }
+                });
 
-                    return `<div class="bg-white border p-4 rounded-xl space-y-3 shadow-sm">
-                        <div class="flex justify-between items-center flex-wrap gap-2">
-                            <div>
-                                <span class="font-bold text-sm text-gray-800">${j.mapel}</span>
-                                <div class="text-xs text-gray-500 mt-0.5">📅 ${formatTanggalID(j.tanggal)} (${j.hari || '-'}) | ⏰ ${j.jam_mulai} - ${j.jam_selesai} WIB</div>
-                            </div>
-                            ${statusInfo}
-                        </div>
-
-                        <div class="flex flex-wrap gap-2 pt-1 border-t">
-                            ${j.file_name ? `<button onclick="catatAbsenDanAkses(${j.id}, '${j.jam_mulai}', '${j.jam_selesai}'); bukaViewerFile('${j.file_name}',${safeSiswaUrl})" class="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs border border-green-200 font-bold flex items-center gap-1 transition">📄 Lihat Modul: ${j.file_name}</button>` : ''}
-                            ${j.link_video ? `<a href="${j.link_video}" target="_blank" onclick="catatAbsenDanAkses(${j.id}, '${j.jam_mulai}', '${j.jam_selesai}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs border border-green-200 font-bold flex items-center gap-1 transition">🔗 Buka Link/Video</a>` : ''}
-                        </div>
-
-                        ${sudahKirim ? `
-                        <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg text-xs space-y-2">
-                            <div class="flex justify-between items-center">
-                                <span class="font-bold text-blue-800">Hasil & Penilaian Guru:</span>
-                                ${izinRemedial ? `<button onclick="toggleEditTugasForm(${j.id})" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-2.5 py-1 rounded text-[11px] transition">✏️ Edit Tugas (Remedial Aktif)</button>` : `<span class="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[11px] font-semibold italic">🔒 Terkunci (Menunggu Izin Guru)</span>`}
-                            </div>
-                            <div>Nilai: <span class="font-black text-blue-900">${tg.nilai !== null && tg.nilai !== undefined ? tg.nilai : 'Belum Dinilai'}</span></div>
-                            <div>Catatan Guru: <span class="italic text-gray-700">${tg.catatan_guru || 'Tidak ada catatan'}</span></div>
-                            <div class="border-t border-blue-200 pt-1 text-[11px] text-gray-600">
-                                <b>Jawaban Teks Terkirim:</b> ${tg.teks_jawaban}${tg.file_name && tg.file_name !== 'Tanpa File' ? `<br><b>File Lampiran:</b> <span class="font-mono text-blue-700">${tg.file_name}</span>` : ''}
-                            </div>
-                        </div>
-
-                        <!-- FORM EDIT TUGAS SISWA -->
-                        <form id="form-edit-tugas-${j.id}" onsubmit="handleUpdateTugasSiswa(event, ${tg.id},${j.id})" class="hidden space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs">
-                            <h5 class="font-bold text-amber-800">Form Remedial / Edit Pengiriman Tugas:</h5>
-                            <textarea id="edit-jawaban-teks-${j.id}" rows="2" class="w-full border p-2 text-xs rounded-lg bg-white" required>${tg.teks_jawaban}</textarea>
-                            <label class="block text-[11px] text-gray-600 font-semibold">Ganti File Lampiran (Gambar, Word, atau PDF):</label>
-                            <input type="file" id="edit-jawaban-file-${j.id}" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" class="w-full text-xs border p-1 rounded-lg bg-white">
-                            <div class="flex gap-2">
-                                <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-1.5 rounded-lg font-bold">Kirim Ulang Tugas</button>
-                                <button type="button" onclick="toggleEditTugasForm(${j.id})" class="bg-gray-400 hover:bg-gray-500 text-white py-1.5 px-3 rounded-lg font-bold">Tutup</button>
-                            </div>
-                        </form>
-                        ` : ''}
-
-                        ${!sudahKirim && isMateriAktif ? `
-                        <form onsubmit="catatAbsenDanAkses(${j.id}, '${j.jam_mulai}', '${j.jam_selesai}'); handleKirimTugas(event,${j.id})" class="space-y-2 pt-2 border-t">
-                            <textarea id="jawaban-teks-${j.id}" rows="2" class="w-full border p-2 text-xs rounded-lg" placeholder="Ketik jawaban tugas..." required></textarea>
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-600 mb-0.5">Lampirkan File Tugas :</label>
-                                <input type="file" id="jawaban-file-${j.id}" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" class="w-full text-xs border p-1 rounded-lg bg-gray-50">
-                            </div>
-                            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 text-xs font-bold rounded-lg transition">Kirim Tugas</button>
-                        </form>` : (!sudahKirim ? `<p class="text-xs text-gray-400 italic pt-2 border-t">Pengiriman tugas sedang tidak aktif/ditutup oleh guru.</p>` : '')}
-                    </div>`;
-                }).join('');
+                if (divSiswaBelum) divSiswaBelum.innerHTML = htmlBelum || `<div class="p-4 text-center text-gray-400 bg-gray-50 border rounded-xl text-xs">Tidak ada tugas/materi yang belum dikerjakan. 🎉</div>`;
+                if (divSiswaSudah) divSiswaSudah.innerHTML = htmlSudah || `<div class="p-4 text-center text-gray-400 bg-gray-50 border rounded-xl text-xs">Belum ada tugas yang dikirim.</div>`;
             }
         }
     </script>
