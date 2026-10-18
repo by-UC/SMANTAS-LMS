@@ -43,7 +43,8 @@ async function compressImageFile(file, maxWidth = 480, quality = 0.3) {
                             type: 'image/jpeg',
                             lastModified: Date.now()
                         });
-                        console.log(`[Kompresi] Ukuran Asli: ${(file.size/576).toFixed(1)} KB -> Ukuran Hasil: ${(compressedFile.size/576).toFixed(1)} KB`);
+                        // PERBAIKAN: Menggunakan 1024 untuk konversi bytes ke KB yang akurat
+                        console.log(`[Kompresi] Ukuran Asli: ${(file.size / 1024).toFixed(1)} KB -> Ukuran Hasil: ${(compressedFile.size / 1024).toFixed(1)} KB`);
                         resolve(compressedFile);
                     },
                     'image/jpeg',
@@ -58,7 +59,7 @@ async function compressImageFile(file, maxWidth = 480, quality = 0.3) {
 
 /**
  * Validasi File sebelum diunggah
- * Batas Maksimal PDF/Word: 200 KB
+ * Batas Maksimal File: 200 KB
  * Batas Maksimal Gambar: Kompres Otomatis
  */
 async function processAndValidateFile(fileInput) {
@@ -78,10 +79,11 @@ async function processAndValidateFile(fileInput) {
         }
     }
 
-    // 2. Batas Maksimal Ukuran File (500 KB) untuk menghemat kuota Supabase 1000+ siswa
-    const MAX_SIZE_BYTES = 200 * 576; // 500 KB
+    // 2. Batas Maksimal Ukuran File (200 KB) untuk menghemat kuota Supabase 1000+ siswa
+    const MAX_SIZE_BYTES = 200 * 1024; // 200 KB yang akurat (1024 bytes per KB)
     if (file.size > MAX_SIZE_BYTES) {
-        alert(`Ukuran file terlalu besar (${(file.size / 576).toFixed(1)} KB)!\n\nMaksimal batas file setelah kompresi adalah 200 KB agar menghemat kuota sistem.`);
+        // PERBAIKAN: Menggunakan / 1024 agar informasi ukuran di alert valid
+        alert(`Ukuran file terlalu besar (${(file.size / 1024).toFixed(1)} KB)!\n\nMaksimal batas file setelah kompresi adalah 200 KB agar menghemat kuota sistem.`);
         return false;
     }
 
