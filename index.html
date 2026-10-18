@@ -863,7 +863,7 @@
 
             const todayObj = new Date();
             const todayStr = todayObj.toISOString().split('T')[0];
-            const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Sabtu'];
             const monthsName = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
             const currentDayName = daysName[todayObj.getDay()];
@@ -1217,7 +1217,15 @@
             document.getElementById('dashboard-section').classList.remove('hidden');
             document.querySelectorAll('.role-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`content-${currentUser.role}`).classList.remove('hidden');
-            document.getElementById('user-info-badge').innerText = `${currentUser.nama} (${currentUser.role.toUpperCase()})`;
+            
+            // Perbaruan tampilan Badge Pengguna (Jika siswa, tampilkan NAMA KELAS, misal: YUSUP X-1)
+            const userInfoBadge = document.getElementById('user-info-badge');
+            if (currentUser.role === 'siswa') {
+                const kelasSiswa = currentUser.kelas ? ` ${currentUser.kelas}` : '';
+                userInfoBadge.innerText = `${currentUser.nama}${kelasSiswa}`;
+            } else {
+                userInfoBadge.innerText = `${currentUser.nama} (${currentUser.role.toUpperCase()})`;
+            }
 
             const btnSelfPass = document.getElementById('btn-ganti-password-self');
             if (currentUser.role === 'guru' || currentUser.role === 'siswa') {
