@@ -298,7 +298,7 @@
                                 
                                 <div>
                                     <label class="block text-xs font-bold text-gray-600 mb-1">Unggah Lampiran Modul (Gambar, Word, atau PDF):</label>
-                                    <p class="text-[11px] text-blue-600 font-semibold mb-1">💡 File gambar dikompres otomatis & Max ukuran file 500 KB (Hemat Kuota)</p>
+                                    <p class="text-[11px] text-blue-600 font-semibold mb-1">💡 File gambar dikompres otomatis & Max ukuran file 200 KB (Hemat Kuota)</p>
                                     <input type="file" id="input-jadwal-file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" class="w-full text-xs border p-2 rounded-lg bg-gray-50">
                                 </div>
 
@@ -556,10 +556,10 @@
                 }
             }
 
-            // Batasi Ukuran Maksimal File setelah diproses (Max 500 KB) untuk hemat kuota
-            const MAX_SIZE_BYTES = 500 * 1024; // 500 KB
+            // Batasi Ukuran Maksimal File setelah diproses (Max 200 KB) untuk hemat kuota
+            const MAX_SIZE_BYTES = 500 * 1024; // 200 KB
             if (file.size > MAX_SIZE_BYTES) {
-                alert(`Ukuran file terlalu besar (${(file.size / 1024).toFixed(1)} KB)!\n\nMaksimal batas ukuran file adalah 500 KB agar hemat kuota sistem.`);
+                alert(`Ukuran file terlalu besar (${(file.size / 1024).toFixed(1)} KB)!\n\nMaksimal batas ukuran file adalah 200 KB agar hemat kuota sistem.`);
                 return false;
             }
 
