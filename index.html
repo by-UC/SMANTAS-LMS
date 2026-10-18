@@ -80,12 +80,48 @@
                 <div class="bg-white p-4 sm:p-6 rounded-b-xl shadow-sm border border-t-0 border-gray-100">
                     <!-- Tab Kelas -->
                     <div id="admin-tab-kelas" class="admin-tab-content space-y-4">
-                        <h3 class="text-base font-bold text-gray-800">Kelas</h3>
+                        <h3 class="text-base font-bold text-gray-800">Manajemen Kelas</h3>
                         <form onsubmit="handleCreateClass(event)" class="space-y-3 max-w-lg">
-                            <input type="text" id="input-nama-kelas" required placeholder="Nama Kelas (Contoh: X-1)" class="w-full p-2.5 border rounded-lg text-sm">
+                            <input type="text" id="input-nama-kelas" required placeholder="Nama Kelas Baru (Contoh: X-1)" class="w-full p-2.5 border rounded-lg text-sm">
                             <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm">Buat Kelas</button>
                         </form>
                         <ul id="list-kelas-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
+
+                        <!-- Modal Editor Jam KBM per Kelas -->
+                        <div id="modal-jam-kbm-kelas" class="hidden fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4">
+                            <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                                <div class="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
+                                    <h3 class="font-bold text-sm sm:text-base">Pengaturan Jam KBM & Rentang Istirahat Kelas: <span id="label-kelas-kbm" class="underline font-black"></span></h3>
+                                    <button onclick="closeModalKbm()" class="text-white hover:bg-blue-700 px-3 py-1 rounded-lg font-bold">✕</button>
+                                </div>
+                                <div class="p-4 overflow-x-auto flex-1">
+                                    <table class="w-full text-xs text-center border-collapse border border-gray-300">
+                                        <thead>
+                                            <tr class="bg-gray-100 text-gray-700 font-bold border-b border-gray-300">
+                                                <th rowspan="2" class="p-2 border border-gray-300 w-24" id="header-nama-kelas-matrix">X-1</th>
+                                                <th colspan="2" class="p-2 border border-gray-300 bg-blue-50">Rentang Jam KBM</th>
+                                                <th colspan="4" class="p-2 border border-gray-300 bg-amber-50">Rentang Jam Istirahat (Jam Isi)[cite: 6]</th>
+                                            </tr>
+                                            <tr class="bg-gray-50 text-gray-700 font-semibold border-b border-gray-300">
+                                                <th class="p-2 border border-gray-300">Jam Mulai KBM</th>
+                                                <th class="p-2 border border-gray-300">Jam Selesai KBM</th>
+                                                <th class="p-2 border border-gray-300">Istirahat 1</th>
+                                                <th class="p-2 border border-gray-300">Istirahat 2</th>
+                                                <th class="p-2 border border-gray-300">Istirahat 3</th>
+                                                <th class="p-2 border border-gray-300">Istirahat 4</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody-matrix-kbm">
+                                            <!-- Generated via JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="bg-gray-100 px-6 py-3 flex justify-end gap-2 border-t">
+                                    <button onclick="closeModalKbm()" class="bg-gray-400 hover:bg-gray-500 text-white font-bold px-4 py-2 rounded-lg text-xs">Batal</button>
+                                    <button onclick="simpanKbmMatrixKelas()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-xs">💾 Simpan Jam KBM</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Tab Guru & Mata Pelajaran -->
@@ -140,7 +176,7 @@
 
                     <!-- Tab Live Monitoring -->
                     <div id="admin-tab-monitoring" class="admin-tab-content hidden space-y-4">
-                        <h3 class="text-base font-bold text-gray-800">Live Monitoring Siswa (Real-Time)</h3>
+                        <h3 class="text-base font-bold text-gray-800">Live Monitoring Siswa & Jam KBM (Real-Time)</h3>
                         <div id="live-monitoring-container" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
                     </div>
 
@@ -195,7 +231,7 @@
                                     </div>
                                     <div>
                                         <label class="block text-[11px] font-bold text-gray-600 mb-1">Jam Selesai</label>
-                                        <input type="time" id="input-jam-selesai" required value="08:45" class="w-full p-2 border rounded-lg text-xs">
+                                        <input type="time" id="input-jam-selesai" required value="08:40" class="w-full p-2 border rounded-lg text-xs">
                                     </div>
                                 </div>
 
@@ -336,6 +372,17 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let currentUser = null;
         let activeJadwalData = [];
+        let selectedKelasForKbm = null;
+        let activeKbmSettings = [];
+
+        // DEFAULT JAM KBM KELAS SESUAI GAMBAR REFERENSI
+        const DEFAULT_KBM_MATRIX = [
+            { hari: 'Senin', jam_mulai: '07.30', jam_selesai: '15.00', istirahat_1: '09.30 - 10.30', istirahat_2: '11.50 - 12.30', istirahat_3: '', istirahat_4: '' },
+            { hari: 'Selasa', jam_mulai: '06.30', jam_selesai: '15.00', istirahat_1: '09.10 - 10.30', istirahat_2: '11.50 - 12.50', istirahat_3: '', istirahat_4: '' },
+            { hari: 'Rabu', jam_mulai: '06.30', jam_selesai: '15.00', istirahat_1: '09.10 - 10.30', istirahat_2: '11.50 - 12.50', istirahat_3: '', istirahat_4: '' },
+            { hari: 'Kamis', jam_mulai: '06.30', jam_selesai: '15.00', istirahat_1: '09.10 - 10.30', istirahat_2: '11.50 - 12.50', istirahat_3: '', istirahat_4: '' },
+            { hari: 'Jum\'at', jam_mulai: '07.30', jam_selesai: '11.20', istirahat_1: '09.30 - 10.00', istirahat_2: '', istirahat_3: '', istirahat_4: '' }
+        ];
 
         document.addEventListener('DOMContentLoaded', () => {
             const savedUser = localStorage.getItem('lms_user');
@@ -364,13 +411,12 @@
             document.getElementById('input-jadwal-hari').value = hariStr;
         }
 
-        // Fungsi otomatis jam selesai 45 menit setelah jam mulai
         function updateJamSelesaiOtomatis() {
             const jamMulaiVal = document.getElementById('input-jam-mulai').value;
             if (!jamMulaiVal) return;
 
             const [hours, minutes] = jamMulaiVal.split(':').map(Number);
-            let totalMinutes = hours * 60 + minutes + 45; // Tambah 45 menit
+            let totalMinutes = hours * 60 + minutes + 40; // Tambah 40 menit
 
             const newHours = Math.floor(totalMinutes / 60) % 24;
             const newMinutes = totalMinutes % 60;
@@ -390,6 +436,28 @@
             } catch (e) {
                 return dateStr;
             }
+        }
+
+        function timeToMin(tStr) {
+            if (!tStr) return 0;
+            const clean = tStr.replace('.', ':').trim();
+            const [h, m] = clean.split(':').map(Number);
+            return (h || 0) * 60 + (m || 0);
+        }
+
+        function minToTimeStr(totalMin) {
+            if (totalMin <= 0) return "0 Menit";
+            const h = Math.floor(totalMin / 60);
+            const m = totalMin % 60;
+            if (h === 0) return `${m} Menit`;
+            if (m === 0) return `${h} Jam`;
+            return `${h} Jam ${m} Menit`;
+        }
+
+        function formatMinToTime(min) {
+            const h = Math.floor(min / 60);
+            const m = min % 60;
+            return `${String(h).padStart(2, '0')}.${String(m).padStart(2, '0')}`;
         }
 
         function getWaktuWIB() {
@@ -493,7 +561,7 @@
                     </li>
                 `).join('');
             } else {
-                listEl.innerHTML = `<li class="py-4 text-center text-xs text-gray-400 italic">Tidak ada siswa.</li>`;
+                listEl.innerHTML = `<li class="py-4 text-center text-xs text-gray-400 italic">Tidak ada data.</li>`;
             }
 
             modal.classList.remove('hidden');
@@ -581,6 +649,75 @@
                 activeBtn.classList.remove('text-gray-500');
                 activeBtn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
             }
+        }
+
+        // ================= LOGIKA EDITOR MATRIX JAM KBM PER KELAS =================
+        function bukaModalKbm(namaKelas) {
+            selectedKelasForKbm = namaKelas;
+            document.getElementById('label-kelas-kbm').innerText = namaKelas;
+            document.getElementById('header-nama-kelas-matrix').innerText = namaKelas;
+
+            const kelasSettings = activeKbmSettings.filter(s => s.nama_kelas === namaKelas);
+            const tbody = document.getElementById('tbody-matrix-kbm');
+
+            const rows = DEFAULT_KBM_MATRIX.map((def, idx) => {
+                const existing = kelasSettings.find(s => s.hari === def.hari);
+                const valMulai = existing ? (existing.jam_mulai !== undefined && existing.jam_mulai !== null ? existing.jam_mulai : def.jam_mulai) : def.jam_mulai;
+                const valSelesai = existing ? (existing.jam_selesai !== undefined && existing.jam_selesai !== null ? existing.jam_selesai : def.jam_selesai) : def.jam_selesai;
+                const valI1 = existing ? (existing.istirahat_1 !== undefined && existing.istirahat_1 !== null ? existing.istirahat_1 : def.istirahat_1) : def.istirahat_1;
+                const valI2 = existing ? (existing.istirahat_2 !== undefined && existing.istirahat_2 !== null ? existing.istirahat_2 : def.istirahat_2) : def.istirahat_2;
+                const valI3 = existing ? (existing.istirahat_3 !== undefined && existing.istirahat_3 !== null ? existing.istirahat_3 : def.istirahat_3) : def.istirahat_3;
+                const valI4 = existing ? (existing.istirahat_4 !== undefined && existing.istirahat_4 !== null ? existing.istirahat_4 : def.istirahat_4) : def.istirahat_4;
+
+                return `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-2 border font-bold text-gray-700 bg-gray-50">${def.hari}</td>
+                        <td class="p-1 border"><input type="text" id="kbm-mulai-${idx}" value="${valMulai}" class="w-full text-center p-1.5 border rounded font-mono font-semibold" placeholder="07.30"></td>
+                        <td class="p-1 border"><input type="text" id="kbm-selesai-${idx}" value="${valSelesai}" class="w-full text-center p-1.5 border rounded font-mono font-semibold" placeholder="15.00"></td>
+                        <td class="p-1 border"><input type="text" id="kbm-i1-${idx}" value="${valI1}" class="w-full text-center p-1.5 border rounded font-mono" placeholder="09.30 - 10.30"></td>
+                        <td class="p-1 border"><input type="text" id="kbm-i2-${idx}" value="${valI2}" class="w-full text-center p-1.5 border rounded font-mono" placeholder="Kosongkan"></td>
+                        <td class="p-1 border"><input type="text" id="kbm-i3-${idx}" value="${valI3}" class="w-full text-center p-1.5 border rounded font-mono" placeholder="Kosongkan"></td>
+                        <td class="p-1 border"><input type="text" id="kbm-i4-${idx}" value="${valI4}" class="w-full text-center p-1.5 border rounded font-mono" placeholder="Kosongkan"></td>
+                    </tr>
+                `;
+            }).join('');
+
+            tbody.innerHTML = rows;
+            document.getElementById('modal-jam-kbm-kelas').classList.remove('hidden');
+        }
+
+        function closeModalKbm() {
+            document.getElementById('modal-jam-kbm-kelas').classList.add('hidden');
+        }
+
+        async function simpanKbmMatrixKelas() {
+            if (!selectedKelasForKbm) return;
+
+            let payloadList = [];
+            DEFAULT_KBM_MATRIX.forEach((def, idx) => {
+                payloadList.push({
+                    nama_kelas: selectedKelasForKbm,
+                    hari: def.hari,
+                    jam_mulai: document.getElementById(`kbm-mulai-${idx}`).value.trim(),
+                    jam_selesai: document.getElementById(`kbm-selesai-${idx}`).value.trim(),
+                    istirahat_1: document.getElementById(`kbm-i1-${idx}`).value.trim(),
+                    istirahat_2: document.getElementById(`kbm-i2-${idx}`).value.trim(),
+                    istirahat_3: document.getElementById(`kbm-i3-${idx}`).value.trim(),
+                    istirahat_4: document.getElementById(`kbm-i4-${idx}`).value.trim()
+                });
+            });
+
+            await supabaseClient.from('pengaturan_kbm_kelas').delete().eq('nama_kelas', selectedKelasForKbm);
+            const { error } = await supabaseClient.from('pengaturan_kbm_kelas').insert(payloadList);
+
+            if (error) {
+                alert('Gagal menyimpan pengaturan KBM: ' + error.message);
+                return;
+            }
+
+            alert(`Pengaturan Jam KBM & Rentang Istirahat untuk kelas ${selectedKelasForKbm} berhasil disimpan!`);
+            closeModalKbm();
+            renderData();
         }
 
         async function handleResetAdminPassword(event) {
@@ -758,27 +895,18 @@
             renderData();
         }
 
-        // FUNGSI CEK BENTROK JAM MENGAJAR GURU
         function cekJadwalBentrok(tanggalBaru, jamMulaiBaru, jamSelesaiBaru, editId = null) {
             const namaGuru = currentUser.nama;
-            
-            const timeToMinutes = (timeStr) => {
-                const [h, m] = timeStr.split(':').map(Number);
-                return h * 60 + m;
-            };
-
-            const startBaruMin = timeToMinutes(jamMulaiBaru);
-            const endBaruMin = timeToMinutes(jamSelesaiBaru);
+            const startBaruMin = timeToMin(jamMulaiBaru);
+            const endBaruMin = timeToMin(jamSelesaiBaru);
 
             for (let j of activeJadwalData) {
                 if (editId && j.id == editId) continue;
-
                 const isGuruSama = j.pengampu === namaGuru || (j.mapel && j.mapel.includes(namaGuru));
 
                 if (isGuruSama && j.tanggal === tanggalBaru) {
-                    const startExistingMin = timeToMinutes(j.jam_mulai);
-                    const endExistingMin = timeToMinutes(j.jam_selesai);
-
+                    const startExistingMin = timeToMin(j.jam_mulai);
+                    const endExistingMin = timeToMin(j.jam_selesai);
                     const isBentrok = (startBaruMin < endExistingMin) && (endBaruMin > startExistingMin);
 
                     if (isBentrok) {
@@ -1131,19 +1259,21 @@
             document.getElementById('stat-total-guru').innerText = cGuru || 0;
             document.getElementById('stat-total-siswa').innerText = cSiswa || 0;
 
-            const [{ data: listGuru }, { data: listKelas }, { data: listSiswa }, { data: listJadwal }, { data: listAbsen }, { data: listTugas }, { data: adminSettingData }] = await Promise.all([
+            const [{ data: listGuru }, { data: listKelas }, { data: listSiswa }, { data: listJadwal }, { data: listAbsen }, { data: listTugas }, { data: adminSettingData }, { data: listKbmSettings }] = await Promise.all([
                 supabaseClient.from('guru').select('*'),
                 supabaseClient.from('kelas').select('*'),
                 supabaseClient.from('siswa').select('*'),
                 supabaseClient.from('jadwal').select('*'),
                 supabaseClient.from('absen').select('*'),
                 supabaseClient.from('tugas').select('*'),
-                supabaseClient.from('admin_setting').select('*').eq('key', 'admin_password').single()
+                supabaseClient.from('admin_setting').select('*').eq('key', 'admin_password').single(),
+                supabaseClient.from('pengaturan_kbm_kelas').select('*')
             ]);
 
             if (listJadwal) activeJadwalData = listJadwal;
             if (listGuru) activeGuruList = listGuru;
             if (listSiswa) activeSiswaList = listSiswa;
+            if (listKbmSettings) activeKbmSettings = listKbmSettings;
 
             if (adminSettingData) {
                 const actualPass = adminSettingData.value;
@@ -1167,9 +1297,12 @@
 
             const ulKelas = document.getElementById('list-kelas-admin');
             if (ulKelas && listKelas) {
-                ulKelas.innerHTML = listKelas.map(k => `<li class="p-2.5 bg-white border rounded-lg text-xs font-bold text-gray-700 shadow-sm flex justify-between items-center">
-                    <span>${k.nama}</span>
-                    <button onclick="handleDeleteKelas(${k.id})" class="bg-red-500 hover:bg-red-600 text-white font-bold px-2 py-1 rounded text-xs">🗑️ Hapus</button>
+                ulKelas.innerHTML = listKelas.map(k => `<li class="p-3 bg-white border rounded-lg text-xs shadow-sm flex justify-between items-center">
+                    <span class="font-bold text-gray-800 text-sm">${k.nama}</span>
+                    <div class="space-x-1">
+                        <button onclick="bukaModalKbm('${k.nama}')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 py-1.5 rounded text-xs transition">⚙️ Atur Jam KBM</button>
+                        <button onclick="handleDeleteKelas(${k.id})" class="bg-red-500 hover:bg-red-600 text-white font-bold px-2.5 py-1.5 rounded text-xs transition">🗑️ Hapus</button>
+                    </div>
                 </li>`).join('');
             }
 
@@ -1202,91 +1335,159 @@
                 }
             }
 
+            // DASHBOARD LIVE MONITORING ADMIN (SESUAI GAMBAR REFERENSI & PERMINTAAN)
             const monitoringContainer = document.getElementById('live-monitoring-container');
             if (monitoringContainer && listKelas) {
-                const todayStr = new Date().toISOString().split('T')[0];
+                const todayObj = new Date();
+                const todayStr = todayObj.toISOString().split('T')[0];
+                const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jum\'at', 'Sabtu'];
+                const currentDayName = daysName[todayObj.getDay()];
 
                 monitoringContainer.innerHTML = listKelas.map(k => {
                     const siswaInKelas = listSiswa?.filter(s => s.kelas === k.nama) || [];
                     const totalSiswa = siswaInKelas.length;
-                    
-                    const listHadir = [];
-                    const listTerlambat = [];
-                    const listAlpa = [];
-                    const listKirimTugas = [];
 
                     const jadwalKelas = listJadwal?.filter(j => j.kelas === k.nama) || [];
                     const jadwalHariIni = jadwalKelas.filter(j => j.tanggal === todayStr);
-                    
-                    siswaInKelas.forEach(s => {
-                        const hasSubmitted = listTugas?.some(t => t.nama_siswa === s.nama && jadwalKelas.some(j => j.id === t.jadwal_id));
-                        if (hasSubmitted) listKirimTugas.push(s.nama);
 
-                        const absenList = listAbsen?.filter(a => a.nama_siswa === s.nama && jadwalKelas.some(j => j.id === a.jadwal_id)) || [];
-                        if (absenList.some(a => a.status === 'Hadir')) {
-                            listHadir.push(s.nama);
-                        } else if (absenList.some(a => a.status === 'Terlambat')) {
-                            listTerlambat.push(s.nama);
-                        } else {
-                            listAlpa.push(s.nama);
+                    const customKbm = activeKbmSettings.find(s => s.nama_kelas === k.nama && s.hari === currentDayName);
+                    const defaultDef = DEFAULT_KBM_MATRIX.find(d => d.hari === currentDayName);
+
+                    let jamMulaiStr = customKbm ? (customKbm.jam_mulai || '') : (defaultDef ? defaultDef.jam_mulai : '');
+                    let jamSelesaiStr = customKbm ? (customKbm.jam_selesai || '') : (defaultDef ? defaultDef.jam_selesai : '');
+
+                    let istirahatList = [];
+                    if (customKbm) {
+                        [customKbm.istirahat_1, customKbm.istirahat_2, customKbm.istirahat_3, customKbm.istirahat_4].forEach(i => {
+                            if (i && i.includes('-')) istirahatList.push(i.trim());
+                        });
+                    } else if (defaultDef) {
+                        [defaultDef.istirahat_1, defaultDef.istirahat_2, defaultDef.istirahat_3, defaultDef.istirahat_4].forEach(i => {
+                            if (i && i.includes('-')) istirahatList.push(i.trim());
+                        });
+                    }
+
+                    // Urutkan jadwal hari ini berdasarkan jam mulai
+                    jadwalHariIni.sort((a, b) => timeToMin(a.jam_mulai) - timeToMin(b.jam_mulai));
+
+                    // HITUNG RENTANG JAM KOSONG (KBM MINUS JAM ISI & ISTIRAHAT)
+                    let startKbmMin = timeToMin(jamMulaiStr);
+                    let endKbmMin = timeToMin(jamSelesaiStr);
+
+                    // Kumpulkan semua blok waktu sibuk (jam isi + istirahat)
+                    let busyBlocks = [];
+                    jadwalHariIni.forEach(j => {
+                        busyBlocks.push({ start: timeToMin(j.jam_mulai), end: timeToMin(j.jam_selesai) });
+                    });
+                    istirahatList.forEach(i => {
+                        const [p1, p2] = i.split('-').map(s => s.trim());
+                        busyBlocks.push({ start: timeToMin(p1), end: timeToMin(p2) });
+                    });
+
+                    // Urutkan blok sibuk
+                    busyBlocks.sort((a, b) => a.start - b.start);
+
+                    // Cari celah kosong
+                    let emptyIntervals = [];
+                    let pointer = startKbmMin;
+
+                    busyBlocks.forEach(block => {
+                        if (block.start > pointer) {
+                            emptyIntervals.push({ start: pointer, end: block.start });
+                        }
+                        if (block.end > pointer) {
+                            pointer = block.end;
                         }
                     });
 
-                    let statusJamHtml = '';
-                    if (jadwalHariIni.length > 0) {
-                        const listPelajaran = jadwalHariIni.map(j => `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px] font-semibold">${j.mapel} (${j.jam_mulai} - ${j.jam_selesai})</span>`).join(' ');
-                        statusJamHtml = `<div class="bg-green-100 text-green-800 text-xs px-2.5 py-1 rounded-lg font-bold inline-block">🟢 JAM ISI</div>
-                                         <div class="text-xs text-gray-600 mt-1">Materi Hari Ini: ${listPelajaran}</div>`;
-                    } else {
-                        statusJamHtml = `<div class="bg-red-100 text-red-800 text-xs px-2.5 py-1 rounded-lg font-bold inline-block">🔴 JAM KOSONG / Tidak Ada Jadwal</div>`;
+                    if (pointer < endKbmMin) {
+                        emptyIntervals.push({ start: pointer, end: endKbmMin });
                     }
 
-                    const jsonHadir = JSON.stringify(listHadir).replace(/"/g, '&quot;');
-                    const jsonTerlambat = JSON.stringify(listTerlambat).replace(/"/g, '&quot;');
-                    const jsonAlpa = JSON.stringify(listAlpa).replace(/"/g, '&quot;');
-                    const jsonKirimTugas = JSON.stringify(listKirimTugas).replace(/"/g, '&quot;');
+                    // Render Tombol Kotak Hijau (Jam Isi) dengan Pop-up Detail Materi/Guru
+                    const jsonJadwalHariIni = JSON.stringify(jadwalHariIni.map(j => ({
+                        mapel: j.mapel,
+                        pengampu: j.pengampu || 'Guru Pengampu',
+                        jam: `${j.jam_mulai} - ${j.jam_selesai} WIB`
+                    }))).replace(/"/g, '&quot;');
+
+                    const jamIsiBtnHtml = jadwalHariIni.length > 0 
+                        ? `<button onclick="showJamIsiModal('Jam Isi (Materi Terisi) - Kelas ${k.nama}', ${jsonJadwalHariIni})" class="bg-lime-500 hover:bg-lime-600 text-white font-bold p-3 rounded-lg text-xs text-center transition flex-1 shadow cursor-pointer">
+                                <div class="text-sm font-black">Jam Isi (${jadwalHariIni.length} Sesi)</div>
+                                <div class="text-[10px] text-lime-100 mt-0.5">Klik untuk lihat daftar guru & materi</div>
+                           </button>`
+                        : `<div class="bg-gray-200 text-gray-500 font-bold p-3 rounded-lg text-xs text-center flex-1">
+                                <div class="text-sm">Belum Ada Jam Isi</div>
+                           </div>`;
+
+                    // Render Kotak Merah (Jam Kosong per Rentang Waktu)
+                    let jamKosongBoxesHtml = '';
+                    if (emptyIntervals.length > 0) {
+                        jamKosongBoxesHtml = emptyIntervals.map(interval => {
+                            const rangeText = `${formatMinToTime(interval.start)}-${formatMinToTime(interval.end)}`;
+                            return `<div class="bg-red-500 text-white font-bold p-3 rounded-lg text-xs text-center flex-1 shadow flex items-center justify-center">
+                                <div>
+                                    <div class="text-[10px] uppercase font-semibold text-red-200">Jam Kosong</div>
+                                    <div class="text-xs sm:text-sm font-black font-mono">${rangeText}</div>
+                                </div>
+                            </div>`;
+                        }).join('');
+                    } else if (startKbmMin < endKbmMin) {
+                        jamKosongBoxesHtml = `<div class="bg-green-600 text-white font-bold p-3 rounded-lg text-xs text-center flex-1 shadow flex items-center justify-center">
+                            <div>
+                                <div class="text-xs font-black">🟢 Full Terisi / Tidak Ada Jam Kosong</div>
+                            </div>
+                        </div>`;
+                    } else {
+                        jamKosongBoxesHtml = `<div class="bg-gray-100 text-gray-600 font-bold p-3 rounded-lg text-xs text-center flex-1">
+                            <div>Tidak ada KBM hari ini</div>
+                        </div>`;
+                    }
 
                     return `<div class="bg-white border p-4 rounded-xl shadow-sm space-y-3">
                         <div class="flex justify-between items-center border-b pb-2 flex-wrap gap-2">
                             <div>
                                 <span class="font-bold text-sm text-blue-600">Kelas: ${k.nama}</span>
                                 <span class="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded ml-2">Total Siswa: ${totalSiswa}</span>
+                                ${jamMulaiStr && jamSelesaiStr ? `<div class="text-[11px] text-gray-400 font-medium mt-0.5">Jam KBM Resmi: ${jamMulaiStr} -${jamSelesaiStr} WIB</div>` : ''}
                             </div>
-                            <div>${statusJamHtml}</div>
                         </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                            <button onclick="showSiswaModal('Siswa Hadir - Kelas ${k.nama}', ${jsonHadir}, 'bg-green-600')" class="bg-green-50 hover:bg-green-100 p-2 rounded border border-green-200 text-left transition cursor-pointer"><b>Hadir:</b> ${listHadir.length} 🔍</button>
-                            <button onclick="showSiswaModal('Siswa Terlambat - Kelas ${k.nama}', ${jsonTerlambat}, 'bg-amber-600')" class="bg-yellow-50 hover:bg-yellow-100 p-2 rounded border border-yellow-200 text-left transition cursor-pointer"><b>Terlambat:</b> ${listTerlambat.length} 🔍</button>
-                            <button onclick="showSiswaModal('Siswa Alpa - Kelas ${k.nama}', ${jsonAlpa}, 'bg-red-600')" class="bg-red-50 hover:bg-red-100 p-2 rounded border border-red-200 text-left transition cursor-pointer"><b>Alpa:</b> ${listAlpa.length} 🔍</button>
-                            <button onclick="showSiswaModal('Siswa Mengirim Tugas - Kelas ${k.nama}', ${jsonKirimTugas}, 'bg-blue-600')" class="bg-blue-50 hover:bg-blue-100 p-2 rounded border border-blue-200 text-left transition cursor-pointer"><b>Kirim Tugas:</b> ${listKirimTugas.length} 🔍</button>
+                        
+                        <!-- Tampilan Grid Jam Isi (Hijau) & Jam Kosong (Merah) Persis Gambar -->
+                        <div class="flex flex-wrap gap-2 items-stretch">
+                            ${jamIsiBtnHtml}
+                            ${jamKosongBoxesHtml}
                         </div>
-                    `;
+                    </div>`;
                 }).join('');
             }
 
+            // DAFTAR KELOLA MATERI OLEH GURU
             const divPengumpulan = document.getElementById('list-pengumpulan-guru');
             if (divPengumpulan && currentUser?.role === 'guru' && listJadwal) {
                 const myJadwalGuru = listJadwal.filter(j => j.pengampu === currentUser.nama);
                 divPengumpulan.innerHTML = myJadwalGuru.map(j => {
                     const statusText = j.status_tugas === 'aktif' ? '<span class="text-green-600 font-bold">Aktif</span>' : '<span class="text-red-600 font-bold">Selesai/Ditutup</span>';
                     const toggleBtn = j.status_tugas === 'aktif' 
-                        ? `<button onclick="updateStatusTugas(${j.id}, 'selesai')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">Hentikan</button>`
-                        : `<button onclick="updateStatusTugas(${j.id}, 'aktif')" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold">Buka</button>`;
+                        ? `<button onclick="updateStatusTugas(${j.id}, 'selesai')" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded text-xs font-bold transition">Hentikan</button>`
+                        : `<button onclick="updateStatusTugas(${j.id}, 'aktif')" class="bg-blue-500 hover:bg-blue-600 text-white px-2.5 py-1.5 rounded text-xs font-bold transition">Buka</button>`;
 
                     const safeUrl = j.file_url ? `'${j.file_url}'` : 'null';
-                    return `<div class="bg-white p-3 rounded-lg border space-y-2 shadow-sm">
-                        <div class="flex justify-between items-center">
-                            <span class="font-bold text-blue-600 text-xs">${j.mapel} (${j.kelas})</span>
-                            <div class="space-x-1">
-                                <button onclick="prepareEditJadwal(${j.id})" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-xs font-bold">✏️ Edit</button>
+                    return `<div class="bg-white p-3.5 rounded-lg border space-y-2 shadow-sm">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="font-bold text-blue-600 text-xs sm:text-sm break-words flex-1 min-w-0 pr-1">
+                                ${j.mapel} <span class="text-gray-700">(${j.kelas})</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                                <button onclick="prepareEditJadwal(${j.id})" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1.5 rounded text-xs font-bold transition">✏️ Edit</button>
                                 ${toggleBtn}
-                                <button onclick="handleDeleteJadwal(${j.id})" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs font-bold">🗑️ Hapus</button>
+                                <button onclick="handleDeleteJadwal(${j.id})" class="bg-red-600 hover:bg-red-700 text-white px-2.5 py-1.5 rounded text-xs font-bold transition">🗑️ Hapus</button>
                             </div>
                         </div>
                         <p class="text-xs text-gray-500">Status: ${statusText} | Tanggal: ${formatTanggalID(j.tanggal)} (${j.hari || '-'}) | Jam: ${j.jam_mulai} - ${j.jam_selesai} WIB</p>
                         ${j.file_name ? `<div class="text-xs"><button onclick="bukaViewerFile('${j.file_name}',${safeUrl})" class="text-blue-600 font-semibold underline flex items-center gap-1">📄 Lihat Modul: ${j.file_name}</button></div>` : ''}
                         ${j.link_video ? `<div class="text-xs"><a href="${j.link_video}" target="_blank" class="text-blue-500 hover:underline">🔗 Buka Link/Video Aktif</a></div>` : ''}
-                        <button onclick="downloadRekapExcel(${j.id}, '${j.mapel.replace(/'/g, "\\'")}', '${j.kelas}', '${j.jam_mulai}', '${j.jam_selesai}', '${j.tanggal || ''}', '${j.hari || ''}')" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded text-xs w-full font-bold">📊 Download Rekap Absensi (Excel)</button>
+                        <button onclick="downloadRekapExcel(${j.id}, '${j.mapel.replace(/'/g, "\\'")}', '${j.kelas}', '${j.jam_mulai}', '${j.jam_selesai}', '${j.tanggal || ''}', '${j.hari || ''}')" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded text-xs w-full font-bold transition">📊 Download Rekap Absensi (Excel)</button>
                     </div>`;
                 }).join('');
             }
@@ -1486,6 +1687,31 @@
                 if (divSiswaBelum) divSiswaBelum.innerHTML = htmlBelum || `<div class="p-4 text-center text-gray-400 bg-gray-50 border rounded-xl text-xs">Tidak ada tugas/materi yang belum dikerjakan. 🎉</div>`;
                 if (divSiswaSudah) divSiswaSudah.innerHTML = htmlSudah || `<div class="p-4 text-center text-gray-400 bg-gray-50 border rounded-xl text-xs">Belum ada tugas yang dikirim.</div>`;
             }
+        }
+
+        // FUNGSI POP-UP KETIKA TOMBOL "JAM ISI" DIKLIK DI LIVE MONITORING
+        function showJamIsiModal(title, listMateri) {
+            const modal = document.getElementById('siswa-detail-modal');
+            const titleEl = document.getElementById('siswa-modal-title');
+            const headerEl = document.getElementById('siswa-modal-header');
+            const listEl = document.getElementById('siswa-modal-list');
+
+            titleEl.innerText = title;
+            headerEl.className = 'bg-lime-600 text-white px-5 py-4 flex justify-between items-center';
+
+            if (listMateri && listMateri.length > 0) {
+                listEl.innerHTML = listMateri.map((m, idx) => `
+                    <li class="py-3 flex flex-col space-y-1 text-xs border-b">
+                        <div class="font-bold text-gray-800 text-sm">${idx + 1}. ${m.mapel}</div>
+                        <div class="text-gray-600">👨‍🏫 Guru: <b>${m.pengampu}</b></div>
+                        <div class="text-blue-600 font-mono">⏰ Jam: ${m.jam}</div>
+                    </li>
+                `).join('');
+            } else {
+                listEl.innerHTML = `<li class="py-4 text-center text-xs text-gray-400 italic">Tidak ada materi KBM.</li>`;
+            }
+
+            modal.classList.remove('hidden');
         }
     </script>
 </body>
