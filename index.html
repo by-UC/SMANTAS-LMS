@@ -26,9 +26,9 @@
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Pilih Role</label>
                     <select id="role-select" class="w-full rounded-lg border-gray-300 shadow-sm p-3 border text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="admin">Admin</option>
+                        <option value="siswa" selected>Siswa</option>
                         <option value="guru">Guru</option>
-                        <option value="siswa">Siswa</option>
+                        <option value="admin">Admin</option>
                     </select>
                 </div>
                 <div>
@@ -547,7 +547,6 @@
                 return false;
             }
 
-            // Kompresi otomatis jika berupa gambar (menargetkan ukuran sekitar 50 KB)
             if (file.type.startsWith('image/') || fileNameLower.match(/\.(jpg|jpeg|png)$/)) {
                 try {
                     file = await compressImageFile(file, 800, 0.4);
@@ -556,7 +555,6 @@
                 }
             }
 
-            // Batasan ketat maksimal file setelah kompresi adalah 200 KB
             const MAX_SIZE_BYTES = 200 * 1024; // 200 KB
             if (file.size > MAX_SIZE_BYTES) {
                 alert(`Ukuran file terlalu besar (${(file.size / 1024).toFixed(1)} KB)!\n\nBatas maksimal ukuran file adalah 200 KB.`);
@@ -1218,7 +1216,6 @@
             document.querySelectorAll('.role-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`content-${currentUser.role}`).classList.remove('hidden');
             
-            // Perbaruan tampilan Badge Pengguna (Jika siswa, tampilkan NAMA KELAS, misal: YUSUP X-1)
             const userInfoBadge = document.getElementById('user-info-badge');
             if (currentUser.role === 'siswa') {
                 const kelasSiswa = currentUser.kelas ? ` ${currentUser.kelas}` : '';
@@ -1793,6 +1790,7 @@
             renderData();
         }
 
+        // ================= REVISI FORMAT NAMA FILE DOWNLOAD (GURU) =================
         async function exportNilaiExcel() {
             const { data: listJadwal } = await supabaseClient.from('jadwal').select('*').eq('pengampu', currentUser.nama);
             const { data: listSiswa } = await supabaseClient.from('siswa').select('*');
@@ -1810,8 +1808,26 @@
             }
 
             let excelData = [];
+            let kelasName = "Semua_Kelas";
+            let mapelName = "Semua_Mapel";
+            let materiName = "Semua_Materi";
+            let hariName = "-";
+            let tanggalName = "-";
 
             filteredJadwal.forEach(j => {
+                kelasName = j.kelas || kelasName;
+                hariName = j.hari || hariName;
+                tanggalName = j.tanggal || tanggalName;
+
+                const mapelParts = j.mapel ? j.mapel.split(' - ') : [];
+                if (mapelParts.length >= 2) {
+                    mapelName = mapelParts[0];
+                    materiName = mapelParts[1];
+                } else {
+                    mapelName = j.mapel;
+                    materiName = "Materi";
+                }
+
                 const targetSiswa = listSiswa?.filter(s => s.kelas === j.kelas) || [];
                 targetSiswa.forEach(s => {
                     const ab = listAbsen?.find(a => a.jadwal_id === j.id && a.nama_siswa === s.nama);
@@ -1838,10 +1854,19 @@
                 });
             });
 
+            const cleanKelas = kelasName.replace(/[^a-zA-Z0-9]/g, '_');
+            const cleanMapel = mapelName.replace(/[^a-zA-Z0-9]/g, '_');
+            const cleanMateri = materiName.replace(/[^a-zA-Z0-9]/g, '_');
+            const cleanHari = hariName.replace(/[^a-zA-Z0-9]/g, '_');
+            const cleanTanggal = tanggalName.replace(/[^a-zA-Z0-9]/g, '_');
+
+            // Format Nama File Nilai: Nilai_Kelas_Mapel_Materi_Hari_Tanggal
+            const fileNameNilai = `Nilai_${cleanKelas}_${cleanMapel}_${cleanMateri}_${cleanHari}_${cleanTanggal}.xlsx`;
+
             const worksheet = XLSX.utils.json_to_sheet(excelData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Nilai & Absen");
-            XLSX.writeFile(workbook, `Rekap_Nilai_Tugas_${currentUser.nama.replace(/\s+/g, '_')}.xlsx`);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Nilai & Tugas");
+            XLSX.writeFile(workbook, fileNameNilai);
         }
 
         async function downloadRekapExcel(jadwalId, mapel, kelas, jamMulai, jamSelesai, tanggal, hari) {
@@ -1864,15 +1889,28 @@
                 });
             });
 
+            let mapelName = "Mapel";
+            let materiName = "Materi";
+            const mapelParts = mapel ? mapel.split(' - ') : [];
+            if (mapelParts.length >= 2) {
+                mapelName = mapelParts[0];
+                materiName = mapelParts[1];
+            } else {
+                mapelName = mapel;
+            }
+
+            const cleanKelas = kelas.replace(/[^a-zA-Z0-9]/g, '_');
+            const cleanMateri = materiName.replace(/[^a-zA-Z0-9]/g, '_');
+            const cleanHari = (hari || 'Hari').replace(/[^a-zA-Z0-9]/g, '_');
+            const cleanTanggal = (tanggal || 'Tanggal').replace(/[^a-zA-Z0-9]/g, '_');
+
+            // Format Nama File Absen: Absen_Kelas_Materi_Hari_Tanggal
+            const fileNameAbsen = `Absen_${cleanKelas}_${cleanMateri}_${cleanHari}_${cleanTanggal}.xlsx`;
+
             const worksheet = XLSX.utils.json_to_sheet(excelData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Absensi");
-
-            const cleanMapel = mapel.replace(/[^a-zA-Z0-9]/g, '_');
-            const cleanKelas = kelas.replace(/[^a-zA-Z0-9]/g, '_');
-            const cleanGuru = currentUser.nama.replace(/[^a-zA-Z0-9]/g, '_');
-            
-            XLSX.writeFile(workbook, `Rekap_Absensi_${cleanMapel}_${cleanKelas}_${cleanGuru}.xlsx`);
+            XLSX.writeFile(workbook, fileNameAbsen);
         }
 
         async function renderData() {
