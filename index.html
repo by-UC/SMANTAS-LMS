@@ -571,7 +571,6 @@
                                     type: 'image/jpeg',
                                     lastModified: Date.now()
                                 });
-                                console.log(`[Kompresi Target 50KB] Asli: ${(file.size/1024).toFixed(1)} KB -> Hasil: ${(compressedFile.size/1024).toFixed(1)} KB`);
                                 resolve(compressedFile);
                             },
                             'image/jpeg',
@@ -603,7 +602,7 @@
                 try {
                     file = await compressImageFile(file, 800, 0.4);
                 } catch (e) {
-                    console.warn('Kompresi gambar gagal, menggunakan file asli:', e);
+                    console.warn('Kompresi gambar gagal:', e);
                 }
             }
 
@@ -626,10 +625,12 @@
                 return;
             }
 
+            // OPTIMASI QUERY: Pilih kolom yang dibutuhkan saja & limit 100 baris per kelas
             const { data: listSiswa, error } = await supabaseClient
                 .from('siswa')
-                .select('*')
-                .eq('kelas', targetKelas);
+                .select('id, nama, kelas, username, password')
+                .eq('kelas', targetKelas)
+                .limit(100);
 
             if (error || !listSiswa || listSiswa.length === 0) {
                 alert(`Tidak ditemukan data siswa untuk kelas: ${targetKelas}`);
@@ -646,13 +647,10 @@
 
                 htmlKartu += `
                     <div class="kartu-siswa border border-black bg-white p-2 rounded-md shadow-none font-sans text-center text-gray-900 flex flex-col justify-between" style="width: 5cm; box-sizing: border-box;">
-                        <!-- HEADER KARTU -->
                         <div class="border-b border-gray-400 pb-1 mb-1">
                             <h4 class="font-black text-[9px] uppercase leading-tight tracking-tight text-blue-900">SMA NEGERI 1 TANJUNGSARI</h4>
                             <p class="text-[7px] text-gray-600 font-bold">KARTU AKSES SISWA LMS</p>
                         </div>
-                        
-                        <!-- BODY KARTU -->
                         <div class="space-y-1 my-1">
                             <div class="flex justify-center items-center my-1">
                                 <img src="${qrUrl}" alt="QR" class="w-14 h-14 border p-0.5 rounded bg-white">
@@ -660,14 +658,10 @@
                             <div class="text-[10px] font-black text-gray-900 leading-tight uppercase border-b pb-0.5 truncate">${siswa.nama}</div>
                             <div class="text-[8px] font-bold text-blue-800">Kelas: ${siswa.kelas}</div>
                         </div>
-
-                        <!-- CREDENTIALS -->
                         <div class="bg-gray-100 p-1 rounded border border-gray-300 text-[8px] font-mono text-left space-y-0.5 mt-1">
                             <div><b>User :</b> ${siswa.username}</div>
                             <div><b>Pass :</b> ${siswa.password}</div>
                         </div>
-
-                        <!-- FOOTER KARTU -->
                         <div class="mt-1 pt-0.5 border-t border-gray-300 text-[6px] text-gray-500 font-semibold italic">
                             Simpan kartu ini dengan baik.
                         </div>
@@ -686,7 +680,6 @@
             }, 300);
         }
 
-        // ------------------ FITUR GANTI PASSWORD ------------------
         function bukaModalGantiPasswordSelf() {
             document.getElementById('ganti-password-modal').classList.remove('hidden');
         }
@@ -737,7 +730,6 @@
             tutupModalGantiPasswordSelf();
         }
 
-        // BACKUP & RESTORE DATABASE ADMIN (JSON)
         async function handleBackupDatabase() {
             try {
                 const [
@@ -750,14 +742,14 @@
                     { data: kbm },
                     { data: setting }
                 ] = await Promise.all([
-                    supabaseClient.from('kelas').select('*'),
-                    supabaseClient.from('guru').select('*'),
-                    supabaseClient.from('siswa').select('*'),
-                    supabaseClient.from('jadwal').select('*'),
-                    supabaseClient.from('absen').select('*'),
-                    supabaseClient.from('tugas').select('*'),
-                    supabaseClient.from('pengaturan_kbm_kelas').select('*'),
-                    supabaseClient.from('admin_setting').select('*')
+                    supabaseClient.from('kelas').select('*').limit(500),
+                    supabaseClient.from('guru').select('*').limit(500),
+                    supabaseClient.from('siswa').select('*').limit(2000),
+                    supabaseClient.from('jadwal').select('*').limit(1000),
+                    supabaseClient.from('absen').select('*').limit(2000),
+                    supabaseClient.from('tugas').select('*').limit(2000),
+                    supabaseClient.from('pengaturan_kbm_kelas').select('*').limit(500),
+                    supabaseClient.from('admin_setting').select('*').limit(50)
                 ]);
 
                 const backupData = {
@@ -840,7 +832,6 @@
             reader.readAsText(file);
         }
 
-        // EXCEL GURU & SISWA
         function downloadTemplateGuruExcel() {
             let templateData = [
                 { "Nama": "Drs. Budi Santoso, M.Pd.", "Mapel": "KIMIA, BIOLOGI", "Username": "budisantoso", "Password": "password123" },
@@ -973,13 +964,12 @@
             };
         }
 
-        // ------------------ HASIL FITUR REKAP KBM ADMIN ------------------
         async function downloadRekapKbmExcelAdmin() {
             const [{ data: listKelas }, { data: listJadwal }, { data: listSiswa }, { data: listKbmSettings }] = await Promise.all([
-                supabaseClient.from('kelas').select('*'),
-                supabaseClient.from('jadwal').select('*'),
-                supabaseClient.from('siswa').select('*'),
-                supabaseClient.from('pengaturan_kbm_kelas').select('*')
+                supabaseClient.from('kelas').select('*').limit(200),
+                supabaseClient.from('jadwal').select('*').limit(500),
+                supabaseClient.from('siswa').select('*').limit(1000),
+                supabaseClient.from('pengaturan_kbm_kelas').select('*').limit(200)
             ]);
 
             const todayObj = new Date();
@@ -1001,8 +991,6 @@
                 const totalSiswa = siswaInKelas.length;
 
                 const jadwalKelas = listJadwal?.filter(j => j.kelas === k.nama) || [];
-                
-                // HANYA AMBIL MATERI SESUAI REALTIME HARI INI & TANGGAL
                 const currentDayNameJumat = currentDayName === 'Jumat' ? "Jum'at" : currentDayName;
                 const jadwalHariIni = jadwalKelas.filter(j => j.tanggal === todayStr && j.hari === currentDayNameJumat);
 
@@ -1314,7 +1302,7 @@
             const password = document.getElementById('login-password').value.trim();
 
             if (role === 'admin') {
-                const { data } = await supabaseClient.from('admin_setting').select('*').eq('key', 'admin_password').single();
+                const { data } = await supabaseClient.from('admin_setting').select('value').eq('key', 'admin_password').single();
                 const actualAdminPass = data ? data.value : 'admin123';
                 if (username === 'admin' && password === actualAdminPass) {
                     currentUser = { role: 'admin', nama: 'Administrator', password: actualAdminPass };
@@ -1916,12 +1904,14 @@
             renderData();
         }
 
-        // ================= REVISI FORMAT NAMA FILE DOWNLOAD (GURU) =================
         async function exportNilaiExcel() {
-            const { data: listJadwal } = await supabaseClient.from('jadwal').select('*').eq('pengampu', currentUser.nama);
-            const { data: listSiswa } = await supabaseClient.from('siswa').select('*');
-            const { data: listAbsen } = await supabaseClient.from('absen').select('*');
-            const { data: listTugas } = await supabaseClient.from('tugas').select('*');
+            // OPTIMASI QUERY EXPORT: Batasi row dengan limit agar tidak membebani log
+            const [{ data: listJadwal }, { data: listSiswa }, { data: listAbsen }, { data: listTugas }] = await Promise.all([
+                supabaseClient.from('jadwal').select('*').eq('pengampu', currentUser.nama).limit(200),
+                supabaseClient.from('siswa').select('*').limit(1000),
+                supabaseClient.from('absen').select('*').limit(2000),
+                supabaseClient.from('tugas').select('*').limit(2000)
+            ]);
 
             const selectedJadwalId = document.getElementById('filter-guru-jadwal')?.value;
             const filteredJadwal = selectedJadwalId 
@@ -1986,7 +1976,6 @@
             const cleanHari = hariName.replace(/[^a-zA-Z0-9]/g, '_');
             const cleanTanggal = tanggalName.replace(/[^a-zA-Z0-9]/g, '_');
 
-            // Format Nama File Nilai: Nilai_Kelas_Mapel_Materi_Hari_Tanggal
             const fileNameNilai = `Nilai_${cleanKelas}_${cleanMapel}_${cleanMateri}_${cleanHari}_${cleanTanggal}.xlsx`;
 
             const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -1996,8 +1985,11 @@
         }
 
         async function downloadRekapExcel(jadwalId, mapel, kelas, jamMulai, jamSelesai, tanggal, hari) {
-            const { data: listAbsen } = await supabaseClient.from('absen').select('*').eq('jadwal_id', jadwalId);
-            const { data: listSiswa } = await supabaseClient.from('siswa').select('*').eq('kelas', kelas);
+            // OPTIMASI QUERY: Batasi baris data dengan limit
+            const [{ data: listAbsen }, { data: listSiswa }] = await Promise.all([
+                supabaseClient.from('absen').select('*').eq('jadwal_id', jadwalId).limit(200),
+                supabaseClient.from('siswa').select('*').eq('kelas', kelas).limit(100)
+            ]);
 
             let excelData = [];
             listSiswa?.forEach((s, idx) => {
@@ -2030,7 +2022,6 @@
             const cleanHari = (hari || 'Hari').replace(/[^a-zA-Z0-9]/g, '_');
             const cleanTanggal = (tanggal || 'Tanggal').replace(/[^a-zA-Z0-9]/g, '_');
 
-            // Format Nama File Absen: Absen_Kelas_Materi_Hari_Tanggal
             const fileNameAbsen = `Absen_${cleanKelas}_${cleanMateri}_${cleanHari}_${cleanTanggal}.xlsx`;
 
             const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -2043,10 +2034,11 @@
             if (!currentUser) return;
 
             if (currentUser.role === 'siswa') {
+                // OPTIMASI QUERY SISWA: Filter berdasarkan kelas siswa langsung dari server
                 const [{ data: listJadwal }, { data: listAbsen }, { data: listTugas }] = await Promise.all([
-                    supabaseClient.from('jadwal').select('*').eq('kelas', currentUser.kelas),
-                    supabaseClient.from('absen').select('*').eq('nama_siswa', currentUser.nama),
-                    supabaseClient.from('tugas').select('*').eq('nama_siswa', currentUser.nama)
+                    supabaseClient.from('jadwal').select('*').eq('kelas', currentUser.kelas).limit(50),
+                    supabaseClient.from('absen').select('*').eq('nama_siswa', currentUser.nama).limit(50),
+                    supabaseClient.from('tugas').select('*').eq('nama_siswa', currentUser.nama).limit(50)
                 ]);
 
                 const divSiswaBelum = document.getElementById('list-jadwal-belum');
@@ -2134,7 +2126,7 @@
                 return;
             }
 
-            // ADMIN / GURU
+            // ADMIN / GURU (Dibatasi limit agar log query aman dan hemat)
             const [{ count: cKelas }, { count: cGuru }, { count: cSiswa }] = await Promise.all([
                 supabaseClient.from('kelas').select('*', { count: 'exact', head: true }),
                 supabaseClient.from('guru').select('*', { count: 'exact', head: true }),
@@ -2146,14 +2138,14 @@
             document.getElementById('stat-total-siswa').innerText = cSiswa || 0;
 
             const [{ data: listGuru }, { data: listKelas }, { data: listSiswa }, { data: listJadwal }, { data: listAbsen }, { data: listTugas }, { data: adminSettingData }, { data: listKbmSettings }] = await Promise.all([
-                supabaseClient.from('guru').select('*'),
-                supabaseClient.from('kelas').select('*'),
-                supabaseClient.from('siswa').select('*'),
-                supabaseClient.from('jadwal').select('*'),
-                supabaseClient.from('absen').select('*'),
-                supabaseClient.from('tugas').select('*'),
+                supabaseClient.from('guru').select('*').limit(200),
+                supabaseClient.from('kelas').select('*').limit(100),
+                supabaseClient.from('siswa').select('*').limit(1000),
+                supabaseClient.from('jadwal').select('*').limit(300),
+                supabaseClient.from('absen').select('*').limit(1000),
+                supabaseClient.from('tugas').select('*').limit(1000),
                 supabaseClient.from('admin_setting').select('*').eq('key', 'admin_password').single(),
-                supabaseClient.from('pengaturan_kbm_kelas').select('*')
+                supabaseClient.from('pengaturan_kbm_kelas').select('*').limit(200)
             ]);
 
             if (listJadwal) activeJadwalData = listJadwal;
@@ -2192,7 +2184,6 @@
                 </li>`).join('');
             }
 
-            // POPULATE DROPDOWN KELAS UNTUK CETAK KARTU SISWA
             const selectCetakKartu = document.getElementById('select-kelas-cetak-kartu');
             if (selectCetakKartu && listKelas) {
                 const currentSel = selectCetakKartu.value;
@@ -2228,7 +2219,6 @@
                 }
             }
 
-            // ------------------ LIVE MONITORING REALTIME SESUAI TANGGAL & HARI ------------------
             const monitoringContainer = document.getElementById('live-monitoring-container');
             if (monitoringContainer && listKelas) {
                 const todayObj = new Date();
@@ -2241,8 +2231,6 @@
                     const totalSiswa = siswaInKelas.length;
 
                     const jadwalKelas = listJadwal?.filter(j => j.kelas === k.nama) || [];
-
-                    // HANYA AMBIL MATERI YANG HARI INI & TANGGAL SESUAI PELAJARAN (REALTIME)
                     const currentDayNameJumat = currentDayName === 'Jumat' ? "Jum'at" : currentDayName;
                     const jadwalHariIni = jadwalKelas.filter(j => j.tanggal === todayStr && j.hari === currentDayNameJumat);
 
