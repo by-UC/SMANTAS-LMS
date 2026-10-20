@@ -4,7 +4,6 @@
  */
 async function compressImageFile(file, maxWidth = 400, initialQuality = 0.4) {
     return new Promise((resolve, reject) => {
-        // Jika bukan gambar, kembalikan file asli
         if (!file.type.startsWith('image/')) {
             resolve(file);
             return;
@@ -20,7 +19,6 @@ async function compressImageFile(file, maxWidth = 400, initialQuality = 0.4) {
                 let width = img.width;
                 let height = img.height;
 
-                // Skala proporsional untuk memperkecil resolusi awal
                 if (width > maxWidth) {
                     height = Math.round((height * maxWidth) / width);
                     width = maxWidth;
@@ -43,7 +41,6 @@ async function compressImageFile(file, maxWidth = 400, initialQuality = 0.4) {
                                 return;
                             }
 
-                            // Jika ukuran masih di atas 50 KB dan kualitas masih bisa diturunkan, kurangi kualitasnya lagi
                             if (blob.size > targetBytes && currentQuality > 0.1) {
                                 attemptCompression(currentQuality - 0.1);
                                 return;
@@ -82,7 +79,6 @@ async function processAndValidateFile(fileInput) {
     let file = fileInput.files[0];
     const fileNameLower = file.name.toLowerCase();
 
-    // 1. Jika File Adalah Gambar, Lakukan Auto Kompresi Target < 50 KB
     if (file.type.startsWith('image/') || fileNameLower.match(/\.(jpg|jpeg|png)$/)) {
         try {
             file = await compressImageFile(file, 400, 0.4); 
@@ -91,7 +87,6 @@ async function processAndValidateFile(fileInput) {
         }
     }
 
-    // 2. Batas Maksimal Ukuran File Absolut: 200 KB
     const MAX_SIZE_BYTES = 200 * 1024; // 200 KB
     if (file.size > MAX_SIZE_BYTES) {
         alert(`Ukuran file terlalu besar (${(file.size / 1024).toFixed(1)} KB)!\n\nBatas maksimal ukuran file yang diizinkan adalah 200 KB.`);
