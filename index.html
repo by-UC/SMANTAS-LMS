@@ -1802,7 +1802,26 @@
         async function catatAbsenDanAkses(jadwalId, jamMulai, jamSelesai) {
             const now = new Date();
             const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            const status = currentTimeStr > jamSelesai ? 'Terlambat' : 'Hadir';
+            
+            // Konversi waktu string (HH:MM) ke dalam bentuk menit total untuk perbandingan akurat
+            const timeToMinutes = (tStr) => {
+                if (!tStr) return 0;
+                const [h, m] = tStr.split(':').map(Number);
+                return (h || 0) * 60 + (m || 0);
+            };
+
+            const currentMin = timeToMinutes(currentTimeStr);
+            const startMin = timeToMinutes(jamMulai);
+            const endMin = timeToMinutes(jamSelesai);
+
+            let status = 'Hadir';
+            if (currentMin > endMin) {
+                status = 'Terlambat';
+            } else if (currentMin < startMin) {
+                status = 'Hadir'; 
+            } else {
+                status = 'Hadir';
+            }
 
             dbData.absen = (dbData.absen || []).filter(a => !(a.jadwal_id == jadwalId && a.nama_siswa === currentUser.nama));
             const newId = dbData.absen.length > 0 ? Math.max(...dbData.absen.map(i => i.id || 0)) + 1 : 1;
@@ -2001,9 +2020,36 @@
             const listAbsen = (dbData.absen || []).filter(a => a.jadwal_id === jadwalId);
             const listSiswa = (dbData.siswa || []).filter(s => s.kelas === kelas);
 
+            const timeToMinutes = (tStr) => {
+                if (!tStr) return 0;
+                const cleanT = tStr.replace('.', ':').trim();
+                const [h, m] = cleanT.split(':').map(Number);
+                return (h || 0) * 60 + (m || 0);
+            };
+
+            const endMin = timeToMinutes(jamSelesai);
+
             let excelData = [];
             listSiswa?.forEach((s, idx) => {
                 const ab = listAbsen?.find(a => a.nama_siswa === s.nama);
+                
+                let statusKehadiran = 'Alpa';
+                if (ab && ab.waktu_akses && ab.waktu_akses !== '-') {
+                    const matchTime = ab.waktu_akses.match(/(\d{2})[.:](\d{2})/);
+                    if (matchTime) {
+                        const aksesTimeStr = `${matchTime[1]}:${matchTime[2]}`;
+                        const aksesMin = timeToMinutes(aksesTimeStr);
+
+                        if (aksesMin > endMin) {
+                            statusKehadiran = 'Terlambat';
+                        } else {
+                            statusKehadiran = 'Hadir';
+                        }
+                    } else {
+                        statusKehadiran = ab.status || 'Hadir';
+                    }
+                }
+
                 excelData.push({
                     "No": idx + 1,
                     "Nama Siswa": s.nama,
@@ -2012,7 +2058,7 @@
                     "Hari": hari || '-',
                     "Mata Pelajaran & Topik": mapel,
                     "Jam Pelajaran (WIB)": `${jamMulai} - ${jamSelesai} WIB`,
-                    "Status Kehadiran": ab ? ab.status : 'Alpa',
+                    "Status Kehadiran": statusKehadiran,
                     "Waktu Akses": ab ? ab.waktu_akses : '-'
                 });
             });
