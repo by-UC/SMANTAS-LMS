@@ -32,8 +32,7 @@ async function compressImageFile(file, maxWidth = 400, initialQuality = 0.4) {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Fungsi rekursif/iteratif kecil untuk memastikan ukuran di bawah 50 KB (50 * 1024 bytes)
-                const targetBytes = 50 * 1024;
+                const targetBytes = 50 * 1024; // 50 KB
                 let quality = initialQuality;
 
                 const attemptCompression = (currentQuality) => {
