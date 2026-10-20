@@ -1217,26 +1217,31 @@
             return now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' WIB';
         }
 
-        // PERBAIKAN: SIMPAN STRINGS BASE64 TERPISAH DI LOCALSTORAGE BROWSER AGAR db.json TIDAK MEMBENGKAK
+        // SOLUSI TERBAIK: Mengonversi file menjadi Base64 dan menyimpannya langsung ke db.json & localStorage cache
         async function uploadFileToSupabase(file) {
             if (!file) return null;
-            const fileExt = file.name.split('.').pop();
-            const fileNameUnique = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
             
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
                 reader.onload = () => {
-                    localStorage.setItem(`file_${fileNameUnique}`, reader.result);
+                    const base64String = reader.result;
+                    const fileKey = `file_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+                    
+                    // Simpan ke cache lokal sebagai cadangan
+                    localStorage.setItem(fileKey, base64String);
+
                     resolve({
                         name: file.name,
-                        url: fileNameUnique // Hanya simpan string ID unik ringkas di db.json
+                        // Menyimpan Base64 langsung ke url agar tersinkron secara penuh ke db.json Gist
+                        url: base64String 
                     });
                 };
+                reader.onerror = (error) => reject(error);
             });
         }
 
-        // PERBAIKAN: BUKA FILE DARI LOCALSTORAGE
+        // PENAMPIL BERKAS (Mendukung Multi-Perangkat via Base64 langsung atau Cache Lokal)
         function bukaViewerFile(fileName, fileUrl) {
             const modal = document.getElementById('file-modal');
             const title = document.getElementById('file-modal-title');
@@ -1246,9 +1251,13 @@
             body.innerHTML = '';
 
             const lowerName = fileName.toLowerCase();
-            const actualDataUrl = fileUrl ? (fileUrl.startsWith('data:') ? fileUrl : localStorage.getItem(`file_${fileUrl}`)) : null;
+            
+            let actualDataUrl = fileUrl;
+            if (fileUrl && !fileUrl.startsWith('data:')) {
+                actualDataUrl = localStorage.getItem(`file_${fileUrl}`) || fileUrl;
+            }
 
-            if (actualDataUrl) {
+            if (actualDataUrl && actualDataUrl !== '#') {
                 if (lowerName.endsWith('.pdf')) {
                     body.innerHTML = `<iframe src="${actualDataUrl}" class="w-full h-full rounded-lg border-0"></iframe>`;
                 } else if (lowerName.match(/\.(png|jpg|jpeg)$/)) {
@@ -1267,7 +1276,7 @@
                     <div class="text-center p-6 bg-white rounded-xl shadow border space-y-4 max-w-md">
                         <div class="text-4xl">📂</div>
                         <h4 class="font-bold text-gray-800 text-base">${fileName}</h4>
-                        <p class="text-xs text-gray-500">File tidak ditemukan di penyimpanan lokal browser.</p>
+                        <p class="text-xs text-gray-500">File tidak ditemukan atau belum disinkronkan dengan benar.</p>
                     </div>`;
             }
 
