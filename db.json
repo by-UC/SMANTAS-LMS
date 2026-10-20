@@ -1,0 +1,24 @@
+
+{
+  "kelas": [
+    { "id": 1, "nama": "X-1" },
+    { "id": 2, "nama": "X-2" },
+    { "id": 3, "nama": "XI-1" },
+    { "id": 4, "nama": "XII-1" }
+  ],
+  "guru": [
+    { "id": 1, "nama": "Drs. Budi Santoso, M.Pd.", "mapel": "KIMIA, BIOLOGI", "username": "budisantoso", "password": "password123" },
+    { "id": 2, "nama": "Siti Rahmawati, S.Pd.", "mapel": "BAHASA INGGRIS", "username": "sitirahma", "password": "password123" }
+  ],
+  "siswa": [
+    { "id": 1, "nama": "Siswa Contoh 1", "kelas": "X-1", "username": "siswa1", "password": "password123" },
+    { "id": 2, "nama": "Siswa Contoh 2", "kelas": "X-1", "username": "siswa2", "password": "password123" }
+  ],
+  "jadwal": [],
+  "absen": [],
+  "tugas": [],
+  "pengaturan_kbm_kelas": [],
+  "admin_setting": [
+    { "key": "admin_password", "value": "admin123" }
+  ]
+}
