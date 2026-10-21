@@ -547,7 +547,6 @@
             tugas: [],
             pengaturan_kbm_kelas: [],
             admin_setting: [{ key: 'admin_password', value: 'admin123' }],
-            user_activity: [], 
             log_harian: []    
         };
 
@@ -614,52 +613,62 @@
             document.body.removeChild(link);
         }
 
+        // SISTEM MONITORING ONLINE LOKAL MURNI (TIDAK ADA SPAM GIST / GITHUB)
         function updateHeartbeatOnline() {
             if (!currentUser || currentUser.role === 'admin') return;
 
             const nowTs = Date.now();
-            if (!dbData.user_activity) dbData.user_activity = [];
+            let activityList = [];
+            
+            try {
+                const localAct = localStorage.getItem('lms_user_activity_local');
+                if (localAct) activityList = JSON.parse(localAct);
+            } catch(e) {
+                activityList = [];
+            }
 
-            const existingIndex = dbData.user_activity.findIndex(u => u.username === currentUser.username && u.role === currentUser.role);
-            let hasChanged = false;
+            const existingIndex = activityList.findIndex(u => u.username === currentUser.username && u.role === currentUser.role);
 
             if (existingIndex >= 0) {
-                if (nowTs - dbData.user_activity[existingIndex].last_seen > 10000) {
-                    dbData.user_activity[existingIndex].last_seen = nowTs;
-                    hasChanged = true;
-                }
+                activityList[existingIndex].last_seen = nowTs;
             } else {
-                dbData.user_activity.push({
+                activityList.push({
                     username: currentUser.username,
                     nama: currentUser.nama,
                     role: currentUser.role,
                     last_seen: nowTs
                 });
-                hasChanged = true;
             }
 
-            dbData.user_activity = dbData.user_activity.filter(u => (nowTs - u.last_seen) < 20000);
-
-            if (hasChanged) {
-                saveDatabase();
-            } else {
-                localStorage.setItem('lms_db_json', JSON.stringify(dbData));
-                updateOnlineBadgesUI();
-            }
-        }
-
-        function startOnlineMonitoringLoop() {
-            function loop() {
-                updateHeartbeatOnline();
-                updateOnlineBadgesUI();
-                setTimeout(loop, 10000);
-            }
-            loop();
+            activityList = activityList.filter(u => (nowTs - u.last_seen) < 20000);
+            localStorage.setItem('lms_user_activity_local', JSON.stringify(activityList));
+            updateOnlineBadgesUI();
         }
 
         function updateOnlineBadgesUI() {
             const nowTs = Date.now();
-            const activeUsers = (dbData.user_activity || []).filter(u => (nowTs - u.last_seen) < 20000);
+            let activeUsers = [];
+
+            try {
+                const localAct = localStorage.getItem('lms_user_activity_local');
+                if (localAct) activeUsers = JSON.parse(localAct);
+            } catch(e) {
+                activeUsers = [];
+            }
+
+            if (currentUser && currentUser.role !== 'admin') {
+                const selfActive = activeUsers.some(u => u.username === currentUser.username && u.role === currentUser.role);
+                if (!selfActive) {
+                    activeUsers.push({
+                        username: currentUser.username,
+                        nama: currentUser.nama,
+                        role: currentUser.role,
+                        last_seen: nowTs
+                    });
+                }
+            }
+
+            activeUsers = activeUsers.filter(u => (nowTs - u.last_seen) < 20000);
 
             const onlineGuruCount = activeUsers.filter(u => u.role === 'guru').length;
             const onlineSiswaCount = activeUsers.filter(u => u.role === 'siswa').length;
@@ -669,6 +678,14 @@
 
             if (elGuruOnline) elGuruOnline.innerText = onlineGuruCount;
             if (elSiswaOnline) elSiswaOnline.innerText = onlineSiswaCount;
+        }
+
+        function startOnlineMonitoringLoop() {
+            function loop() {
+                updateHeartbeatOnline();
+                setTimeout(loop, 5000);
+            }
+            loop();
         }
 
         async function loadDatabase() {
@@ -683,7 +700,9 @@
                         const gist = await response.json();
                         if (gist.files && gist.files['db.json']) {
                             const parsed = JSON.parse(gist.files['db.json'].content);
+                            delete parsed.user_activity; // Pastikan user_activity dibuang jika ada di Gist lama
                             dbData = { ...dbData, ...parsed };
+                            delete dbData.user_activity;
                             localStorage.setItem('lms_db_json', JSON.stringify(dbData));
                             return;
                         }
@@ -693,21 +712,30 @@
                 const responseLocal = await fetch('db.json');
                 if (responseLocal.ok) {
                     const json = await responseLocal.json();
+                    delete json.user_activity;
                     dbData = { ...dbData, ...json };
+                    delete dbData.user_activity;
                 }
             } catch (e) {
                 const local = localStorage.getItem('lms_db_json');
                 if (local) {
-                    try { dbData = JSON.parse(local); } catch(err){}
+                    try { 
+                        dbData = JSON.parse(local); 
+                        delete dbData.user_activity;
+                    } catch(err){}
                 }
             }
         }
 
         async function saveDatabase() {
+            delete dbData.user_activity; // Proteksi total agar user_activity tidak ikut tersimpan
             localStorage.setItem('lms_db_json', JSON.stringify(dbData));
 
             if (GIST_ID && GIST_ID !== 'MASUKKAN_GIST_ID_ANDA_DISINI' && GITHUB_TOKEN && GITHUB_TOKEN !== 'MASUKKAN_TOKEN_GITHUB_ANDA_DISINI') {
                 try {
+                    const dataClean = JSON.parse(JSON.stringify(dbData));
+                    delete dataClean.user_activity;
+
                     await fetch(`https://api.github.com/gists/${GIST_ID}`, {
                         method: 'PATCH',
                         headers: {
@@ -718,7 +746,7 @@
                             description: "Update database LMS SMAN 1 Tanjungsari",
                             files: {
                                 "db.json": {
-                                    content: JSON.stringify(dbData, null, 2)
+                                    content: JSON.stringify(dataClean, null, 2)
                                 }
                             }
                         })
@@ -989,6 +1017,7 @@
             reader.onload = async function(e) {
                 try {
                     const parsedData = JSON.parse(e.target.result);
+                    delete parsedData.user_activity;
                     dbData = parsedData;
                     await saveDatabase();
                     alert('Database berhasil dipulihkan secara penuh!');
@@ -1359,7 +1388,7 @@
 
         function getWaktuWIB() {
             const now = new Date();
-            const datePart = now.toISOString().split('T')[0]; // YYYY-MM-DD
+            const datePart = now.toISOString().split('T')[0];
             const timePart = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
             return `${datePart} ${timePart} WIB`;
         }
@@ -1963,20 +1992,16 @@
             renderData();
         }
 
-        // FUNGSI KALKULASI PRESISI STATUS (TANGGAL & RENTANG JAM)
         function kalkulasiStatusKehadiran(jadwalTanggal, jamMulai, jamSelesai, waktuAktivitas) {
             if (!waktuAktivitas || waktuAktivitas === '-') return 'Alpa';
 
-            // Ekstrak tanggal dari waktu aktivitas (Format YYYY-MM-DD)
             const tanggalAktivitasMatch = waktuAktivitas.match(/(\d{4}-\d{2}-\d{2})/);
             const tanggalAktivitas = tanggalAktivitasMatch ? tanggalAktivitasMatch[1] : null;
 
-            // Patokan 1: Jika tanggal berbeda dengan tanggal jadwal, status Terlambat
             if (tanggalAktivitas && jadwalTanggal && tanggalAktivitas !== jadwalTanggal) {
                 return 'Terlambat';
             }
 
-            // Ekstrak jam dan menit
             const matchTime = waktuAktivitas.match(/(\d{2})[.:](\d{2})/);
             if (!matchTime) return 'Terlambat';
 
@@ -1984,7 +2009,6 @@
             const startMin = timeToMin(jamMulai);
             const endMin = timeToMin(jamSelesai);
 
-            // Patokan 2 & 3: Hadir jika di dalam rentang jam, Terlambat jika di luar rentang jam
             if (jamAksesMin >= startMin && jamAksesMin <= endMin) {
                 return 'Hadir';
             } else {
@@ -2276,7 +2300,7 @@
 
                 listJadwal?.forEach(j => {
                     const ab = listAbsen?.find(a => a.jadwal_id === j.id);
-                    const tg = listTugas?.find(t => t.jadwal_id === j.id);
+                    const tg = listTugas?.find(t => t.nama_siswa === currentUser.nama && t.jadwal_id === j.id);
                     const sudahKirim = !!tg;
                     const izinRemedial = tg && tg.izin_perbaikan === true;
                     let isMateriAktif = j.status_tugas === 'aktif';
