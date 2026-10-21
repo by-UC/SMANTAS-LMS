@@ -9,40 +9,19 @@
     <!-- SheetJS (XLSX) Library untuk Ekspor & Baca Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-    <!-- Style Khusus Cetak Kartu Siswa (Lebar 5cm, Tinggi Bebas/Auto) -->
     <style>
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            #print-area, #print-area * {
-                visibility: visible;
-            }
-            #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                background: #fff;
-            }
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; background: #fff; }
             .kartu-siswa {
-                width: 5cm !important;
-                min-width: 5cm !important;
-                max-width: 5cm !important;
-                height: auto !important;
-                page-break-inside: avoid;
-                break-inside: avoid;
-                margin-bottom: 0.4cm;
-                border: 1px solid #000 !important;
-                padding: 0.2cm !important;
-                box-sizing: border-box !important;
-                background-color: #ffffff !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+                width: 5cm !important; min-width: 5cm !important; max-width: 5cm !important;
+                height: auto !important; page-break-inside: avoid; break-inside: avoid;
+                margin-bottom: 0.4cm; border: 1px solid #000 !important; padding: 0.2cm !important;
+                box-sizing: border-box !important; background-color: #ffffff !important;
+                -webkit-print-color-adjust: exact; print-color-adjust: exact;
             }
-            .no-print {
-                display: none !important;
-            }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
@@ -104,10 +83,41 @@
             <!-- DASHBOARD ADMIN -->
             <div id="content-admin" class="role-content hidden space-y-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Administrator</h2>
+                
+                <!-- CARDS STATISTIK DENGAN JUMLAH USER AKTIF -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100"><p class="text-xs font-bold text-gray-400 uppercase">Total Kelas</p><h3 id="stat-total-kelas" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3></div>
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100"><p class="text-xs font-bold text-gray-400 uppercase">Total Guru</p><h3 id="stat-total-guru" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3></div>
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100"><p class="text-xs font-bold text-gray-400 uppercase">Total Siswa</p><h3 id="stat-total-siswa" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3></div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase">Total Kelas</p>
+                            <h3 id="stat-total-kelas" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase">Total Guru</p>
+                            <h3 id="stat-total-guru" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] uppercase font-bold text-gray-400 block">Guru Aktif</span>
+                            <span id="stat-active-guru" class="text-xs sm:text-sm font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 mt-1">
+                                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> 0 Aktif
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase">Total Siswa</p>
+                            <h3 id="stat-total-siswa" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] uppercase font-bold text-gray-400 block">Siswa Aktif</span>
+                            <span id="stat-active-siswa" class="text-xs sm:text-sm font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 mt-1">
+                                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> 0 Aktif
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Tab Navigasi Admin -->
@@ -498,7 +508,6 @@
     <!-- SCRIPT UTAMA & INTEGRASI GITHUB GIST -->
     <script src="compressor.js"></script>
     <script>
-        // ================= INTEGRASI GITHUB GIST API =================
         const GIST_ID = '84b3e40eabd2c6d753eee03ed996d06d';
         const _t1 = 'ghp_XJdzfk2bzR5WoJy4kcG3s';
         const _t2 = 'AoSTKwQxV1OSmxe';
@@ -528,7 +537,6 @@
             { hari: 'Jum\'at', jam_mulai: '07.30', jam_selesai: '11.20', istirahat_1: '09.30 - 10.00', istirahat_2: '', istirahat_3: '', istirahat_4: '' }
         ];
 
-        // LOAD DATABASE UTAMA DARI GITHUB GIST API
         async function loadDatabase() {
             try {
                 if (GIST_ID && GIST_ID !== 'MASUKKAN_GIST_ID_ANDA_DISINI') {
@@ -547,8 +555,6 @@
                         }
                     }
                 }
-                
-                // Fallback ke file db.json lokal jika GIST belum diisi
                 const responseLocal = await fetch('db.json');
                 if (responseLocal.ok) {
                     const json = await responseLocal.json();
@@ -563,7 +569,6 @@
             }
         }
 
-        // SAVE DATABASE UTAMA KE GITHUB GIST API
         async function saveDatabase() {
             localStorage.setItem('lms_db_json', JSON.stringify(dbData));
 
@@ -1219,7 +1224,6 @@
             return now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' WIB';
         }
 
-        // SOLUSI TERBAIK: Mengonversi file menjadi Base64 dan menyimpannya langsung ke db.json & localStorage cache
         async function uploadFileToSupabase(file) {
             if (!file) return null;
             
@@ -1230,12 +1234,10 @@
                     const base64String = reader.result;
                     const fileKey = `file_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
                     
-                    // Simpan ke cache lokal sebagai cadangan
                     localStorage.setItem(fileKey, base64String);
 
                     resolve({
                         name: file.name,
-                        // Menyimpan Base64 langsung ke url agar tersinkron secara penuh ke db.json Gist
                         url: base64String 
                     });
                 };
@@ -1243,7 +1245,6 @@
             });
         }
 
-        // PENAMPIL BERKAS (Mendukung Multi-Perangkat via Base64 langsung atau Cache Lokal)
         function bukaViewerFile(fileName, fileUrl) {
             const modal = document.getElementById('file-modal');
             const title = document.getElementById('file-modal-title');
@@ -1314,9 +1315,7 @@
             modal.classList.remove('hidden');
         }
 
-        function closeSiswaModal() {
-            document.getElementById('siswa-detail-modal').classList.add('hidden');
-        }
+        closeSiswaModal();
 
         async function handleLogin(event) {
             event.preventDefault();
@@ -1833,8 +1832,6 @@
             let status = 'Hadir';
             if (currentMin > endMin) {
                 status = 'Terlambat';
-            } else if (currentMin < startMin) {
-                status = 'Hadir'; 
             } else {
                 status = 'Hadir';
             }
@@ -2205,9 +2202,23 @@
             const listTugas = dbData.tugas || [];
             const listKbmSettings = dbData.pengaturan_kbm_kelas || [];
 
+            // ================= STATISTIK TOTAL & USER AKTIF =================
             document.getElementById('stat-total-kelas').innerText = listKelas.length;
             document.getElementById('stat-total-guru').innerText = listGuru.length;
             document.getElementById('stat-total-siswa').innerText = listSiswa.length;
+
+            const activeGuruCount = (currentUser && currentUser.role === 'guru') ? 1 : 0;
+            const activeSiswaCount = (currentUser && currentUser.role === 'siswa') ? 1 : 0;
+
+            const elActiveGuru = document.getElementById('stat-active-guru');
+            const elActiveSiswa = document.getElementById('stat-active-siswa');
+
+            if (elActiveGuru) {
+                elActiveGuru.innerHTML = `<span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> ${activeGuruCount} Aktif`;
+            }
+            if (elActiveSiswa) {
+                elActiveSiswa.innerHTML = `<span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> ${activeSiswaCount} Aktif`;
+            }
 
             activeJadwalData = listJadwal;
             activeGuruList = listGuru;
@@ -2220,18 +2231,43 @@
                 if (passEl) passEl.innerText = adminSetting.value;
             }
 
+            // ================= DAFTAR GURU DI DASHBOARD ADMIN =================
             const ulGuru = document.getElementById('list-guru-admin');
             if (ulGuru) {
-                ulGuru.innerHTML = listGuru.map(g => `<li class="p-3 bg-white border rounded-lg text-xs flex justify-between items-center shadow-sm">
-                    <div>
-                        <span class="font-bold text-gray-800 text-sm">${g.nama}</span> <span class="text-blue-600 font-semibold">(${g.mapel || 'Belum Set Mapel'})</span>
-                        <div class="text-gray-500 mt-1 font-mono">User: <b class="text-gray-700">${g.username}</b> | Pass: <b class="text-gray-700">${g.password}</b></div>
-                    </div>
-                    <div class="space-x-1">
-                        <button onclick="prepareEditGuru(${g.id})" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-2.5 py-1.5 rounded text-xs">✏️ Edit</button>
-                        <button onclick="handleDeleteGuru(${g.id})" class="bg-red-500 hover:bg-red-600 text-white font-bold px-2.5 py-1.5 rounded text-xs">🗑️ Hapus</button>
-                    </div>
-                </li>`).join('');
+                let sortedGuru = [...listGuru];
+
+                sortedGuru.sort((a, b) => {
+                    const isAActive = currentUser && currentUser.role === 'guru' && currentUser.id === a.id;
+                    const isBActive = currentUser && currentUser.role === 'guru' && currentUser.id === b.id;
+
+                    if (isAActive && !isBActive) return -1;
+                    if (!isAActive && isBActive) return 1;
+                    return a.nama.localeCompare(b.nama, undefined, { sensitivity: 'base' });
+                });
+
+                ulGuru.innerHTML = sortedGuru.map(g => {
+                    const isActiveUser = currentUser && currentUser.role === 'guru' && currentUser.id === g.id;
+
+                    const greenBadgeHtml = isActiveUser 
+                        ? `<span class="inline-flex items-center justify-center w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow-sm ring-2 ring-green-400" title="Sedang Mengakses Saat Ini"></span>` 
+                        : '';
+
+                    return `<li class="p-3 ${isActiveUser ? 'bg-green-50/80 border-green-300' : 'bg-white border-gray-200'} border rounded-lg text-xs flex justify-between items-center shadow-sm transition-all">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-gray-800 text-sm">${g.nama}</span>
+                                ${greenBadgeHtml}
+                                <span class="text-blue-600 font-semibold">(${g.mapel || 'Belum Set Mapel'})</span>
+                                ${isActiveUser ? '<span class="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded">(Anda)</span>' : ''}
+                            </div>
+                            <div class="text-gray-500 mt-1 font-mono">User: <b class="text-gray-700">${g.username}</b> | Pass: <b class="text-gray-700">${g.password}</b></div>
+                        </div>
+                        <div class="space-x-1">
+                            <button onclick="prepareEditGuru(${g.id})" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-2.5 py-1.5 rounded text-xs transition">✏️ Edit</button>
+                            <button onclick="handleDeleteGuru(${g.id})" class="bg-red-500 hover:bg-red-600 text-white font-bold px-2.5 py-1.5 rounded text-xs transition">🗑️ Hapus</button>
+                        </div>
+                    </li>`;
+                }).join('');
             }
 
             const ulKelas = document.getElementById('list-kelas-admin');
@@ -2251,39 +2287,32 @@
                 selectCetakKartu.innerHTML = '<option value="">-- Pilih Kelas --</option>' + listKelas.map(k => `<option value="${k.nama}" ${currentSel === k.nama ? 'selected' : ''}>${k.nama}</option>`).join('');
             }
 
-            // ================= DAFTAR SISWA DI DASHBOARD ADMIN (PENGURUTAN & TOMBOL HIJAU AKTIF) =================
+            // ================= DAFTAR SISWA DI DASHBOARD ADMIN =================
             const ulSiswa = document.getElementById('list-siswa-admin');
             const keyword = document.getElementById('search-siswa-input')?.value.toLowerCase() || '';
 
             if (ulSiswa) {
-                // 1. Filter pencarian
                 let filteredSiswa = listSiswa.filter(s => 
                     s.nama.toLowerCase().includes(keyword) || 
                     s.kelas.toLowerCase().includes(keyword)
                 );
 
-                // 2. Pengurutan (Sorting)
                 filteredSiswa.sort((a, b) => {
                     const isAActive = currentUser && currentUser.role === 'siswa' && currentUser.id === a.id;
                     const isBActive = currentUser && currentUser.role === 'siswa' && currentUser.id === b.id;
 
-                    // Prioritas 1: User yang sedang aktif berada di posisi paling atas
                     if (isAActive && !isBActive) return -1;
                     if (!isAActive && isBActive) return 1;
 
-                    // Prioritas 2: Urutkan berdasarkan Kelas terkecil ke terbesar
                     const classCompare = a.kelas.localeCompare(b.kelas, undefined, { numeric: true, sensitivity: 'base' });
                     if (classCompare !== 0) return classCompare;
 
-                    // Prioritas 3: Jika kelas sama, urutkan berdasarkan Nama (A ke Z)
                     return a.nama.localeCompare(b.nama, undefined, { sensitivity: 'base' });
                 });
 
-                // 3. Render elemen HTML dengan tombol/indikator hijau untuk user aktif
                 ulSiswa.innerHTML = filteredSiswa.map(s => {
                     const isActiveUser = currentUser && currentUser.role === 'siswa' && currentUser.id === s.id;
 
-                    // Tombol/Titik Hijau Aktif
                     const greenBadgeHtml = isActiveUser 
                         ? `<span class="inline-flex items-center justify-center w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow-sm ring-2 ring-green-400" title="Sedang Mengakses Saat Ini"></span>` 
                         : '';
