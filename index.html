@@ -121,7 +121,7 @@
                                     <span id="stat-guru-online">0</span> Aktif
                                 </span>
                                 <button onclick="downloadLogTxt('guru')" class="bg-slate-800 hover:bg-slate-900 text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition shadow-sm">
-                                    📋 log[cite: 1]
+                                    📋 log
                                 </button>
                             </div>
                         </div>
@@ -137,7 +137,7 @@
                                     <span id="stat-siswa-online">0</span> Aktif
                                 </span>
                                 <button onclick="downloadLogTxt('siswa')" class="bg-slate-800 hover:bg-slate-900 text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition shadow-sm">
-                                    📋 log[cite: 1]
+                                    📋 log
                                 </button>
                             </div>
                         </div>
@@ -538,6 +538,7 @@
         const _t2 = 'AoSTKwQxV1OSmxe';
         const GITHUB_TOKEN = _t1 + _t2;
         
+        // OBJEK DATABASE MURNI (TANPA user_activity & TANPA log_harian)
         let dbData = {
             kelas: [],
             guru: [],
@@ -546,8 +547,7 @@
             absen: [],
             tugas: [],
             pengaturan_kbm_kelas: [],
-            admin_setting: [{ key: 'admin_password', value: 'admin123' }],
-            log_harian: []    
+            admin_setting: [{ key: 'admin_password', value: 'admin123' }]
         };
 
         let currentUser = null;
@@ -563,14 +563,21 @@
             { hari: 'Jum\'at', jam_mulai: '07.30', jam_selesai: '11.20', istirahat_1: '09.30 - 10.00', istirahat_2: '', istirahat_3: '', istirahat_4: '' }
         ];
 
+        // 1. LOG HARIAN MURNI LOCALSTORAGE (TIDAK MASUK GIST / DB.JSON)
         function catatLogHarian(role, username, nama, aktivitas) {
             const now = new Date();
             const dateStr = now.toISOString().split('T')[0];
             const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
 
-            if (!dbData.log_harian) dbData.log_harian = [];
+            let localLogs = [];
+            try {
+                const saved = localStorage.getItem('lms_log_harian_local');
+                if (saved) localLogs = JSON.parse(saved);
+            } catch (e) {
+                localLogs = [];
+            }
 
-            dbData.log_harian.push({
+            localLogs.push({
                 tanggal: dateStr,
                 waktu: timeStr,
                 role: role,
@@ -579,13 +586,21 @@
                 aktivitas: aktivitas
             });
 
-            dbData.log_harian = dbData.log_harian.filter(l => l.tanggal === dateStr);
-            saveDatabase();
+            localLogs = localLogs.filter(l => l.tanggal === dateStr);
+            localStorage.setItem('lms_log_harian_local', JSON.stringify(localLogs));
         }
 
         function downloadLogTxt(targetRole) {
             const todayStr = new Date().toISOString().split('T')[0];
-            const logsHariIni = (dbData.log_harian || []).filter(l => l.tanggal === todayStr && l.role === targetRole);
+            let localLogs = [];
+            try {
+                const saved = localStorage.getItem('lms_log_harian_local');
+                if (saved) localLogs = JSON.parse(saved);
+            } catch (e) {
+                localLogs = [];
+            }
+
+            const logsHariIni = localLogs.filter(l => l.tanggal === todayStr && l.role === targetRole);
 
             let textContent = `====================================================\n`;
             textContent += ` LOG AKTIVITAS ${targetRole.toUpperCase()} - LMS SMAN 1 TANJUNGSARI\n`;
@@ -613,7 +628,7 @@
             document.body.removeChild(link);
         }
 
-        // SISTEM MONITORING ONLINE LOKAL MURNI (TIDAK ADA SPAM GIST / GITHUB)
+        // 2. MONITORING ONLINE MURNI LOCALSTORAGE (TANPA COMMIT GIST)
         function updateHeartbeatOnline() {
             if (!currentUser || currentUser.role === 'admin') return;
 
@@ -688,6 +703,7 @@
             loop();
         }
 
+        // 3. LOAD & SANITASI DATABASE (MEMBUANG PROPERTI NON-DATABASE AKSI)
         async function loadDatabase() {
             try {
                 if (GIST_ID && GIST_ID !== 'MASUKKAN_GIST_ID_ANDA_DISINI') {
@@ -700,9 +716,16 @@
                         const gist = await response.json();
                         if (gist.files && gist.files['db.json']) {
                             const parsed = JSON.parse(gist.files['db.json'].content);
-                            delete parsed.user_activity; // Pastikan user_activity dibuang jika ada di Gist lama
+                            
+                            // PEMBERSIHAN PAKSA DARI GIST LAMA
+                            delete parsed.user_activity;
+                            delete parsed.log_harian;
+
                             dbData = { ...dbData, ...parsed };
+                            
                             delete dbData.user_activity;
+                            delete dbData.log_harian;
+
                             localStorage.setItem('lms_db_json', JSON.stringify(dbData));
                             return;
                         }
@@ -713,8 +736,10 @@
                 if (responseLocal.ok) {
                     const json = await responseLocal.json();
                     delete json.user_activity;
+                    delete json.log_harian;
                     dbData = { ...dbData, ...json };
                     delete dbData.user_activity;
+                    delete dbData.log_harian;
                 }
             } catch (e) {
                 const local = localStorage.getItem('lms_db_json');
@@ -722,19 +747,27 @@
                     try { 
                         dbData = JSON.parse(local); 
                         delete dbData.user_activity;
+                        delete dbData.log_harian;
                     } catch(err){}
                 }
             }
         }
 
+        // 4. SAVE DATABASE KE GIST (HANYA UNTUK AKSES DATA PERUBAHAN NYATA)
         async function saveDatabase() {
-            delete dbData.user_activity; // Proteksi total agar user_activity tidak ikut tersimpan
+            // HAPUS SEBELUM DIPROSES
+            delete dbData.user_activity;
+            delete dbData.log_harian;
+
             localStorage.setItem('lms_db_json', JSON.stringify(dbData));
 
             if (GIST_ID && GIST_ID !== 'MASUKKAN_GIST_ID_ANDA_DISINI' && GITHUB_TOKEN && GITHUB_TOKEN !== 'MASUKKAN_TOKEN_GITHUB_ANDA_DISINI') {
                 try {
                     const dataClean = JSON.parse(JSON.stringify(dbData));
+                    
+                    // PROTEKSI BERLAPIS SANGAT KETAT
                     delete dataClean.user_activity;
+                    delete dataClean.log_harian;
 
                     await fetch(`https://api.github.com/gists/${GIST_ID}`, {
                         method: 'PATCH',
@@ -1018,6 +1051,7 @@
                 try {
                     const parsedData = JSON.parse(e.target.result);
                     delete parsedData.user_activity;
+                    delete parsedData.log_harian;
                     dbData = parsedData;
                     await saveDatabase();
                     alert('Database berhasil dipulihkan secara penuh!');
