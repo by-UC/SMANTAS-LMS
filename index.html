@@ -734,7 +734,7 @@
             renderData();
         }
 
-        // DATABASE CLIENT INTERACTION (MENGGANTIKAN SUPABASE)
+        // DATABASE CLIENT INTERACTION
         const supabaseClient = {
             from: (table) => ({
                 select: (columns, options = {}) => ({
@@ -1473,7 +1473,57 @@
 
             localStorage.setItem('lms_user', JSON.stringify(currentUser));
             catatLogHarian(currentUser.role, currentUser.username, currentUser.nama, 'Login ke sistem LMS');
+            
+            // Catat waktu akses otomatis untuk semua materi aktif kelas siswa saat login pertama kali
+            if (currentUser.role === 'siswa') {
+                await catatAksesOtomatisSiswaLogin(currentUser);
+            }
+
             showDashboard();
+        }
+
+        // Fungsi mencatat akses otomatis saat siswa login
+        async function catatAksesOtomatisSiswaLogin(siswa) {
+            const listJadwal = (dbData.jadwal || []).filter(j => j.kelas === siswa.kelas);
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const fullWaktuAkses = `${dateStr} ${currentTimeStr} WIB`;
+
+            let updated = false;
+            listJadwal.forEach(j => {
+                const existingAbsen = (dbData.absen || []).find(a => String(a.jadwal_id) === String(j.id) && a.nama_siswa === siswa.nama);
+                if (!existingAbsen) {
+                    const startMin = timeToMin(j.jam_mulai);
+                    const endMin = timeToMin(j.jam_selesai);
+                    const currentMin = timeToMin(currentTimeStr);
+
+                    let status = 'Terlambat';
+                    if (dateStr === j.tanggal && currentMin >= startMin && currentMin <= endMin) {
+                        status = 'Hadir';
+                    } else if (dateStr < j.tanggal || (dateStr === j.tanggal && currentMin < startMin)) {
+                        status = 'Hadir'; // Belum mulai tapi sudah login/akses
+                    } else {
+                        status = 'Terlambat';
+                    }
+
+                    if (!dbData.absen) dbData.absen = [];
+                    const newId = dbData.absen.length > 0 ? Math.max(...dbData.absen.map(i => i.id || 0)) + 1 : 1;
+                    dbData.absen.push({
+                        id: newId,
+                        jadwal_id: Number(j.id),
+                        nama_siswa: siswa.nama,
+                        kelas_siswa: siswa.kelas,
+                        status: status,
+                        waktu_akses: fullWaktuAkses
+                    });
+                    updated = true;
+                }
+            });
+
+            if (updated) {
+                await saveDatabase();
+            }
         }
 
         function showDashboard() {
@@ -1949,26 +1999,32 @@
             renderData();
         }
 
-        function kalkulasiStatusKehadiran(jadwalTanggal, jamMulai, jamSelesai, waktuAktivitas, hasSubmittedTask = false) {
+        // ================= LOGIKA BARU STATUS KEHADIRAN SESUAI PERMINTAAN =================
+        function kalkulasiStatusKehadiran(jadwalTanggal, jamMulai, jamSelesai, waktuAktivitas, waktuKirimTugas = null) {
+            // Jika waktu akses kosong (tidak pernah login/akses), status otomatis Alpa
             if (!waktuAktivitas || waktuAktivitas === '-') {
-                return hasSubmittedTask ? 'Hadir' : 'Alpa';
+                return 'Alpa';
             }
 
-            const tanggalAktivitasMatch = waktuAktivitas.match(/(\d{4}-\d{2}-\d{2})/);
-            const tanggalAktivitas = tanggalAktivitasMatch ? tanggalAktivitasMatch[1] : null;
+            // Ambil tanggal dari string waktu aktivitas/login (format: YYYY-MM-DD HH:mm WIB)
+            const matchTanggal = waktuAktivitas.match(/(\d{4}-\d{2}-\d{2})/);
+            const tanggalAktivitas = matchTanggal ? matchTanggal[1] : null;
 
-            if (tanggalAktivitas && jadwalTanggal && tanggalAktivitas !== jadwalTanggal) {
+            // Ambil jam dan menit dari string waktu aktivitas
+            const matchJam = waktuAktivitas.match(/(\d{2})[.:](\d{2})/);
+            if (!tanggalAktivitas || !matchJam) {
                 return 'Terlambat';
             }
 
-            const matchTime = waktuAktivitas.match(/(\d{2})[.:](\d{2})/);
-            if (!matchTime) return hasSubmittedTask ? 'Hadir' : 'Terlambat';
-
-            const jamAksesMin = parseInt(matchTime[1], 10) * 60 + parseInt(matchTime[2], 10);
+            const jamAktivitasMin = parseInt(matchJam[1], 10) * 60 + parseInt(matchJam[2], 10);
             const startMin = timeToMin(jamMulai);
             const endMin = timeToMin(jamSelesai);
 
-            if (jamAksesMin >= startMin && jamAksesMin <= endMin) {
+            // Validasi kesesuaian Tanggal dan Rentang Jam Pelajaran (Hadir vs Terlambat)
+            const isTanggalSesuai = (tanggalAktivitas === jadwalTanggal);
+            const isJamSesuai = (jamAktivitasMin >= startMin && jamAktivitasMin <= endMin);
+
+            if (isTanggalSesuai && isJamSesuai) {
                 return 'Hadir';
             } else {
                 return 'Terlambat';
@@ -1990,10 +2046,10 @@
             let status = 'Terlambat';
             if (dateStr === jadwalTanggal && currentMin >= startMin && currentMin <= endMin) {
                 status = 'Hadir';
-            } else if (dateStr > jadwalTanggal || (dateStr === jadwalTanggal && currentMin > endMin)) {
-                status = 'Terlambat';
+            } else if (dateStr < jadwalTanggal || (dateStr === jadwalTanggal && currentMin < startMin)) {
+                status = 'Hadir'; 
             } else {
-                status = 'Hadir';
+                status = 'Terlambat';
             }
 
             dbData.absen = (dbData.absen || []).filter(a => !(String(a.jadwal_id) === String(jadwalId) && a.nama_siswa === currentUser.nama));
@@ -2008,7 +2064,7 @@
                 waktu_akses: fullWaktuAkses
             });
 
-            catatLogHarian('siswa', currentUser.username, currentUser.nama, `Mengakses materi/modul (ID Jadwal: ${jadwalId}, Status: ${status})`);
+            catatLogHarian('siswa', currentUser.username, currentUser.nama, `Mengakses materi/modul (ID Jadwal: ${jadwalId})`);
 
             await saveDatabase();
         }
@@ -2161,8 +2217,8 @@
                     const ab = listAbsen?.find(a => String(a.jadwal_id) === String(j.id) && a.nama_siswa === s.nama);
                     const tg = listTugas?.find(t => String(t.jadwal_id) === String(j.id) && t.nama_siswa === s.nama);
 
-                    const waktuAktivitas = tg ? tg.waktu_kirim : (ab ? ab.waktu_akses : '-');
-                    const statusAbsen = kalkulasiStatusKehadiran(j.tanggal, j.jam_mulai, j.jam_selesai, waktuAktivitas, !!tg);
+                    const waktuAktivitas = ab ? ab.waktu_akses : (tg ? tg.waktu_kirim : '-');
+                    const statusAbsen = kalkulasiStatusKehadiran(j.tanggal, j.jam_mulai, j.jam_selesai, waktuAktivitas, tg ? tg.waktu_kirim : null);
 
                     let statusTugas = 'Belum Mengerjakan';
                     if (tg) statusTugas = 'Sudah Mengirim';
@@ -2179,7 +2235,7 @@
                         "Status Tugas": statusTugas,
                         "Nilai": (tg && tg.nilai !== null && tg.nilai !== undefined) ? tg.nilai : '',
                         "Catatan Guru": (tg && tg.catatan_guru) ? tg.catatan_guru : '',
-                        "Waktu Akses/Kirim": waktuAktivitas
+                        "Waktu Akses/Kirim": waktuAktivitas !== '-' ? waktuAktivitas : ''
                     });
                 });
             });
@@ -2207,8 +2263,8 @@
             listSiswa?.forEach((s, idx) => {
                 const ab = listAbsen?.find(a => a.nama_siswa === s.nama);
                 const tg = listTugas?.find(t => t.nama_siswa === s.nama);
-                const waktuAktivitas = tg ? tg.waktu_kirim : (ab ? ab.waktu_akses : '-');
-                const statusKehadiran = kalkulasiStatusKehadiran(tanggal, jamMulai, jamSelesai, waktuAktivitas, !!tg);
+                const waktuAktivitas = ab ? ab.waktu_akses : (tg ? tg.waktu_kirim : '-');
+                const statusKehadiran = kalkulasiStatusKehadiran(tanggal, jamMulai, jamSelesai, waktuAktivitas, tg ? tg.waktu_kirim : null);
 
                 excelData.push({
                     "No": idx + 1,
@@ -2219,7 +2275,7 @@
                     "Mata Pelajaran & Topik": mapel,
                     "Jam Pelajaran (WIB)": `${jamMulai} - ${jamSelesai} WIB`,
                     "Status Kehadiran": statusKehadiran,
-                    "Waktu Akses": waktuAktivitas
+                    "Waktu Akses": waktuAktivitas !== '-' ? waktuAktivitas : ''
                 });
             });
 
@@ -2307,8 +2363,8 @@
                             </div>
 
                             <div class="flex flex-wrap gap-2 pt-1 border-t">
-                                ${j.file_name ? `<button onclick="bukaViewerFile('${j.file_name}',${safeSiswaUrl})" class="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs border border-green-200 font-bold flex items-center gap-1 transition">📄 Baca Modul Pelajaran: ${j.file_name}</button>` : ''}
-                                ${j.link_video ? `<a href="${j.link_video}" target="_blank" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs border border-blue-200 font-bold flex items-center gap-1 transition">🔗 Buka Link/Video Pembelajaran</a>` : ''}
+                                ${j.file_name ? `<button onclick="catatAbsenDanAkses(${j.id}, '${j.tanggal}', '${j.jam_mulai}', '${j.jam_selesai}'); bukaViewerFile('${j.file_name}',${safeSiswaUrl})" class="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs border border-green-200 font-bold flex items-center gap-1 transition">📄 Baca Modul Pelajaran: ${j.file_name}</button>` : ''}
+                                ${j.link_video ? `<a href="${j.link_video}" target="_blank" onclick="catatAbsenDanAkses(${j.id}, '${j.tanggal}', '${j.jam_mulai}', '${j.jam_selesai}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs border border-blue-200 font-bold flex items-center gap-1 transition">🔗 Buka Link/Video Pembelajaran</a>` : ''}
                             </div>
 
                             <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg text-xs space-y-2">
@@ -2323,7 +2379,7 @@
                                 </div>
                             </div>
 
-                            <form id="form-edit-tugas-${j.id}" onsubmit="handleUpdateTugasSiswa(event, ${tg.id},${j.id})" class="hidden space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs">
+                            <form id="form-edit-tugas-${j.id}" onsubmit="catatAbsenDanAkses(${j.id}, '${j.tanggal}', '${j.jam_mulai}', '${j.jam_selesai}'); handleUpdateTugasSiswa(event, ${tg.id},${j.id})" class="hidden space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs">
                                 <h5 class="font-bold text-amber-800">Form Remedial / Edit Pengiriman Tugas:</h5>
                                 <textarea id="edit-jawaban-teks-${j.id}" rows="2" class="w-full border p-2 text-xs rounded-lg bg-white" required>${tg.teks_jawaban}</textarea>
                                 <label class="block text-[11px] text-gray-600 font-semibold">Ganti File Lampiran (Max 200 KB):</label>
@@ -2605,8 +2661,8 @@
                         const ab = listAbsen?.find(a => String(a.jadwal_id) === String(j.id) && a.nama_siswa === s.nama);
                         const tg = listTugas?.find(t => String(t.jadwal_id) === String(j.id) && t.nama_siswa === s.nama);
 
-                        const waktuAktivitas = tg ? tg.waktu_kirim : (ab ? ab.waktu_akses : '-');
-                        const statusKehadiran = kalkulasiStatusKehadiran(j.tanggal, j.jam_mulai, j.jam_selesai, waktuAktivitas, !!tg);
+                        const waktuAktivitas = ab ? ab.waktu_akses : (tg ? tg.waktu_kirim : '-');
+                        const statusKehadiran = kalkulasiStatusKehadiran(j.tanggal, j.jam_mulai, j.jam_selesai, waktuAktivitas, tg ? tg.waktu_kirim : null);
 
                         let statusAbsenBadge = '';
                         if (statusKehadiran === 'Hadir') {
@@ -2633,7 +2689,7 @@
                         }
 
                         const nilaiBadge = (tg && tg.nilai !== null && tg.nilai !== undefined) ? `<span class="font-black text-blue-600">${tg.nilai}</span>` : `<span class="text-gray-400 italic">Belum</span>`;
-                        const waktuStr = waktuAktivitas;
+                        const waktuStr = waktuAktivitas !== '-' ? waktuAktivitas : '-';
 
                         tableHtml += `<tr class="hover:bg-gray-50">
                             <td class="p-3 font-semibold text-gray-800">${s.nama}</td>
