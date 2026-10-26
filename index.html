@@ -1943,8 +1943,10 @@
             renderData();
         }
 
-        function kalkulasiStatusKehadiran(jadwalTanggal, jamMulai, jamSelesai, waktuAktivitas) {
-            if (!waktuAktivitas || waktuAktivitas === '-') return 'Alpa';
+        function kalkulasiStatusKehadiran(jadwalTanggal, jamMulai, jamSelesai, waktuAktivitas, hasSubmittedTask = false) {
+            if (!waktuAktivitas || waktuAktivitas === '-') {
+                return hasSubmittedTask ? 'Hadir' : 'Alpa';
+            }
 
             const tanggalAktivitasMatch = waktuAktivitas.match(/(\d{4}-\d{2}-\d{2})/);
             const tanggalAktivitas = tanggalAktivitasMatch ? tanggalAktivitasMatch[1] : null;
@@ -1954,7 +1956,7 @@
             }
 
             const matchTime = waktuAktivitas.match(/(\d{2})[.:](\d{2})/);
-            if (!matchTime) return 'Terlambat';
+            if (!matchTime) return hasSubmittedTask ? 'Hadir' : 'Terlambat';
 
             const jamAksesMin = parseInt(matchTime[1], 10) * 60 + parseInt(matchTime[2], 10);
             const startMin = timeToMin(jamMulai);
@@ -2150,7 +2152,7 @@
                     const tg = listTugas?.find(t => t.jadwal_id === j.id && t.nama_siswa === s.nama);
 
                     const waktuAktivitas = tg ? tg.waktu_kirim : (ab ? ab.waktu_akses : '-');
-                    const statusAbsen = kalkulasiStatusKehadiran(j.tanggal, j.jam_mulai, j.jam_selesai, waktuAktivitas);
+                    const statusAbsen = kalkulasiStatusKehadiran(j.tanggal, j.jam_mulai, j.jam_selesai, waktuAktivitas, !!tg);
 
                     let statusTugas = 'Belum Mengerjakan';
                     if (tg) statusTugas = 'Sudah Mengirim';
@@ -2188,13 +2190,15 @@
 
         async function downloadRekapExcel(jadwalId, mapel, kelas, jamMulai, jamSelesai, tanggal, hari) {
             const listAbsen = (dbData.absen || []).filter(a => a.jadwal_id === jadwalId);
+            const listTugas = (dbData.tugas || []).filter(t => t.jadwal_id === jadwalId);
             const listSiswa = (dbData.siswa || []).filter(s => s.kelas === kelas);
 
             let excelData = [];
             listSiswa?.forEach((s, idx) => {
                 const ab = listAbsen?.find(a => a.nama_siswa === s.nama);
-                const waktuAktivitas = ab ? ab.waktu_akses : '-';
-                const statusKehadiran = kalkulasiStatusKehadiran(tanggal, jamMulai, jamSelesai, waktuAktivitas);
+                const tg = listTugas?.find(t => t.nama_siswa === s.nama);
+                const waktuAktivitas = tg ? tg.waktu_kirim : (ab ? ab.waktu_akses : '-');
+                const statusKehadiran = kalkulasiStatusKehadiran(tanggal, jamMulai, jamSelesai, waktuAktivitas, !!tg);
 
                 excelData.push({
                     "No": idx + 1,
@@ -2592,7 +2596,7 @@
                         const tg = listTugas?.find(t => t.jadwal_id === j.id && t.nama_siswa === s.nama);
 
                         const waktuAktivitas = tg ? tg.waktu_kirim : (ab ? ab.waktu_akses : '-');
-                        const statusKehadiran = kalkulasiStatusKehadiran(j.tanggal, j.jam_mulai, j.jam_selesai, waktuAktivitas);
+                        const statusKehadiran = kalkulasiStatusKehadiran(j.tanggal, j.jam_mulai, j.jam_selesai, waktuAktivitas, !!tg);
 
                         let statusAbsenBadge = '';
                         if (statusKehadiran === 'Hadir') {
