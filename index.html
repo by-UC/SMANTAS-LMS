@@ -725,7 +725,7 @@
             try {
                 await fetch(NPOINT_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Menghindari CORS preflight issue di Google Apps Script
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(dbData)
                 });
             } catch (e) {
@@ -2724,9 +2724,9 @@
                                 ${tg.file_name && tg.file_name !== 'Tanpa File' ? `<div class="text-xs font-semibold text-gray-600">📎 File Lampiran Siswa: <button onclick="bukaViewerFile('${tg.file_name}',${safeTugasUrl})" class="text-blue-600 font-mono bg-blue-50 px-2 py-1 rounded border border-blue-200 underline">${tg.file_name}</button></div>` : ''}
                                 
                                 <form onsubmit="handleBeriNilai(event, ${tg.id})" class="pt-2 border-t grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                                    <input type="number" id="input-nilai-${tg.id}" value="${valNilaiForm}" placeholder="Nilai" min="0" max="100" class="p-2 border rounded-lg text-xs font-bold text-center">
-                                    <input type="text" id="input-catatan-${tg.id}" value="${valFeedbackForm}" placeholder="Catatan / Feedback..." class="p-2 border rounded-lg text-xs">
-                                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 text-xs font-bold rounded-lg transition">Update / Simpan Nilai</button>
+                                    <input type="number" id="input-nilai-${tg.id}" value="${valNilaiForm}" placeholder="Nilai" min="0" max="100" class="w-full p-2.5 border rounded-lg text-xs font-bold text-center bg-white shadow-sm">
+                                    <input type="text" id="input-catatan-${tg.id}" value="${valFeedbackForm}" placeholder="Catatan / Feedback..." class="w-full p-2.5 border rounded-lg text-xs bg-white shadow-sm">
+                                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-3 text-xs font-bold rounded-lg transition shadow">Update / Simpan Nilai</button>
                                 </form>
                             </div>`;
                         }
@@ -2749,7 +2749,10 @@
                 if (tbRealtime) tbRealtime.innerHTML = tableHtml || `<tr><td colspan="7" class="p-4 text-center text-gray-400">Belum ada data pengerjaan.</td></tr>`;
 
                 const divHasilJawaban = document.getElementById('list-hasil-jawaban-siswa');
-                if (divHasilJawaban) divHasilJawaban.innerHTML = listJawabanHtml || `<div class="p-4 text-center text-gray-400 bg-gray-50 border rounded-xl text-xs">Belum ada tugas yang dikirimkan oleh siswa.</div>`;
+                if (divHasilJawaban) {
+                    divHasilJawaban.innerHTML = listJawabanHtml || `<div class="p-4 text-center text-gray-400 bg-gray-50 border rounded-xl text-xs">Belum ada tugas yang dikirimkan oleh siswa.</div>`;
+                    loadDefaultNilaiFeedbackGuru();
+                }
             }
         }
 
