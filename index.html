@@ -312,7 +312,7 @@
                         </div>
 
                         <div class="border-t pt-4 space-y-4">
-                            <h3 class="text-base font-bold text-gray-800">💾 Backup & Restore Database (npoint.io)</h3>
+                            <h3 class="text-base font-bold text-gray-800">💾 Backup & Restore Database (Google Sheets)</h3>
                             
                             <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-2">
                                 <h4 class="font-bold text-emerald-900 text-xs uppercase tracking-wide">📦 Unduh `db.json` Backup Lokal</h4>
@@ -325,11 +325,11 @@
                             </div>
 
                             <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-2">
-                                <h4 class="font-bold text-amber-900 text-xs uppercase tracking-wide">📤 Unggah & Timpa npoint.io</h4>
-                                <p class="text-[11px] text-amber-700">Unggah file <code>db.json</code> untuk memperbarui seluruh data di npoint.io secara penuh.</p>
+                                <h4 class="font-bold text-amber-900 text-xs uppercase tracking-wide">📤 Unggah & Timpa Google Sheets</h4>
+                                <p class="text-[11px] text-amber-700">Unggah file <code>db.json</code> untuk memperbarui seluruh data di Google Sheets secara penuh.</p>
                                 <input type="file" id="input-restore-db" accept=".json" class="w-full text-xs border p-2 rounded-lg bg-white">
                                 <button onclick="handleRestoreDatabase()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-lg text-xs w-full transition flex items-center justify-center gap-1.5">
-                                    📤 Upload ke npoint.io
+                                    📤 Upload ke Google Sheets
                                 </button>
                             </div>
                         </div>
@@ -531,10 +531,10 @@
         </div>
     </div>
 
-    <!-- SCRIPT UTAMA & INTEGRASI NPOINT.IO -->
+    <!-- SCRIPT UTAMA & INTEGRASI GOOGLE APPS SCRIPT (GAS) -->
     <script src="compressor.js"></script>
     <script>
-        // ================= INTEGRASI NPOINT.IO CLOUD STORAGE =================
+        // ================= INTEGRASI GOOGLE APPS SCRIPT (GAS) CLOUD STORAGE =================
         const NPOINT_URL = 'https://script.google.com/macros/s/AKfycbxf763RCfqQTVaE-s5V1EdQsiXeComNZwew4D75i26FXX8c5Vd__geK3AN9jTwOLYqquw/exec';
 
         let dbData = {
@@ -701,7 +701,7 @@
             loop();
         }
 
-        // 3. FUNGSI UTAMA LOAD & SAVE NPOINT.IO
+        // 3. FUNGSI UTAMA LOAD & SAVE GOOGLE APPS SCRIPT
         async function loadDatabase() {
             try {
                 const response = await fetch(NPOINT_URL);
@@ -709,10 +709,10 @@
                     const json = await response.json();
                     dbData = { ...dbData, ...json };
                 } else {
-                    throw new Error('Gagal mengambil data dari npoint.io');
+                    throw new Error('Gagal mengambil data dari Google Apps Script');
                 }
             } catch (e) {
-                console.warn("Menggunakan cache lokal karena gagal terhubung ke npoint.io:", e);
+                console.warn("Menggunakan cache lokal karena gagal terhubung ke Google Apps Script:", e);
                 const local = localStorage.getItem('lms_db_json');
                 if (local) {
                     try { dbData = JSON.parse(local); } catch(err){}
@@ -725,11 +725,11 @@
             try {
                 await fetch(NPOINT_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Menghindari CORS preflight issue di Google Apps Script
                     body: JSON.stringify(dbData)
                 });
             } catch (e) {
-                console.error("Gagal menyimpan data secara online ke npoint.io:", e);
+                console.error("Gagal menyimpan data secara online ke Google Apps Script:", e);
             }
             renderData();
         }
@@ -764,7 +764,7 @@
                     if (!dbData[table]) dbData[table] = [];
                     const rowsArr = Array.isArray(rows) ? rows : [rows];
                     rowsArr.forEach(r => {
-                        const newId = dbData[table].length > 0 ? Math.max(...dbData[table].map(i => i.id || 0)) + 1 : 1;
+                        const newId = dbData[table].length > 0 ? Math.max(...dbData[table].map(i => Number(i.id) || 0)) + 1 : 1;
                         dbData[table].push({ id: newId, ...r });
                     });
                     await saveDatabase();
@@ -809,7 +809,7 @@
                     if (idx >= 0) {
                         dbData[table][idx] = { ...dbData[table][idx], ...row };
                     } else {
-                        const newId = dbData[table].length > 0 ? Math.max(...dbData[table].map(i => i.id || 0)) + 1 : 1;
+                        const newId = dbData[table].length > 0 ? Math.max(...dbData[table].map(i => Number(i.id) || 0)) + 1 : 1;
                         dbData[table].push({ id: newId, ...row });
                     }
                     await saveDatabase();
@@ -965,7 +965,7 @@
                 return;
             }
 
-            if (!confirm('PERINGATAN SANGAT PENTING:\nProses ini akan mengunggah file db.json dan menimpa database online di npoint.io secara penuh.\nApakah Anda yakin ingin melanjutkan?')) {
+            if (!confirm('PERINGATAN SANGAT PENTING:\nProses ini akan mengunggah file db.json dan menimpa database di Google Sheets secara penuh.\nApakah Anda yakin ingin melanjutkan?')) {
                 return;
             }
 
@@ -977,7 +977,7 @@
                     const parsedData = JSON.parse(e.target.result);
                     dbData = parsedData;
                     await saveDatabase();
-                    alert('Database berhasil diunggah dan disinkronkan ke npoint.io!');
+                    alert('Database berhasil diunggah dan disinkronkan ke Google Sheets!');
                     fileInput.value = '';
                     renderData();
                 } catch (err) {
@@ -1508,7 +1508,7 @@
                     }
 
                     if (!dbData.absen) dbData.absen = [];
-                    const newId = dbData.absen.length > 0 ? Math.max(...dbData.absen.map(i => i.id || 0)) + 1 : 1;
+                    const newId = dbData.absen.length > 0 ? Math.max(...dbData.absen.map(i => Number(i.id) || 0)) + 1 : 1;
                     dbData.absen.push({
                         id: newId,
                         jadwal_id: Number(j.id),
@@ -1688,7 +1688,7 @@
 
                 alert('Data guru berhasil diperbarui!');
             } else {
-                const newId = dbData.guru.length > 0 ? Math.max(...dbData.guru.map(i => i.id || 0)) + 1 : 1;
+                const newId = dbData.guru.length > 0 ? Math.max(...dbData.guru.map(i => Number(i.id) || 0)) + 1 : 1;
                 dbData.guru.push({ id: newId, nama: namaBaru, mapel, username, password });
                 alert('Guru & Mata Pelajaran berhasil disimpan!');
             }
@@ -1700,7 +1700,7 @@
 
         let activeGuruList = [];
         function prepareEditGuru(id) {
-            const g = activeGuruList.find(item => item.id === id);
+            const g = activeGuruList.find(item => item.id == id);
             if (!g) return;
             document.getElementById('edit-guru-id').value = g.id;
             document.getElementById('input-nama-guru').value = g.nama;
@@ -1732,7 +1732,7 @@
 
         let activeSiswaList = [];
         function prepareEditSiswa(id) {
-            const s = activeSiswaList.find(item => item.id === id);
+            const s = activeSiswaList.find(item => item.id == id);
             if (!s) return;
             document.getElementById('edit-siswa-id').value = s.id;
             document.getElementById('input-edit-nama-siswa').value = s.nama;
@@ -1781,7 +1781,7 @@
             event.preventDefault();
             const nama = document.getElementById('input-nama-kelas').value.trim();
 
-            const newId = dbData.kelas.length > 0 ? Math.max(...dbData.kelas.map(i => i.id || 0)) + 1 : 1;
+            const newId = dbData.kelas.length > 0 ? Math.max(...dbData.kelas.map(i => Number(i.id) || 0)) + 1 : 1;
             dbData.kelas.push({ id: newId, nama });
             await saveDatabase();
 
@@ -1812,7 +1812,7 @@
 
             if (rows.length > 0) {
                 rows.forEach(r => {
-                    const newId = dbData.siswa.length > 0 ? Math.max(...dbData.siswa.map(i => i.id || 0)) + 1 : 1;
+                    const newId = dbData.siswa.length > 0 ? Math.max(...dbData.siswa.map(i => Number(i.id) || 0)) + 1 : 1;
                     dbData.siswa.push({ id: newId, ...r });
                 });
                 await saveDatabase();
@@ -1923,15 +1923,15 @@
 
                 dbData.jadwal = dbData.jadwal.map(j => j.id == editId ? { ...j, ...payload } : j);
                 catatLogHarian('guru', currentUser.username, currentUser.nama, `Mengedit materi ${selectedMapel} di kelas ${kelas}`);
-                alert('Materi berhasil direplace/diperbarui dan langsung tersimpan ke npoint.io!');
+                alert('Materi berhasil direplace/diperbarui dan langsung tersimpan ke Google Sheets!');
             } else {
-                const newId = dbData.jadwal.length > 0 ? Math.max(...dbData.jadwal.map(i => i.id || 0)) + 1 : 1;
+                const newId = dbData.jadwal.length > 0 ? Math.max(...dbData.jadwal.map(i => Number(i.id) || 0)) + 1 : 1;
                 dbData.jadwal.push({ 
                     id: newId, kelas, tanggal, hari, jam_mulai, jam_selesai, 
                     mapel: mapelFull, file_name, file_url, link_video, status_tugas: 'aktif', pengampu: currentUser.nama 
                 });
                 catatLogHarian('guru', currentUser.username, currentUser.nama, `Memublikasikan materi baru ${selectedMapel} untuk kelas ${kelas}`);
-                alert('Materi berhasil dipublikasikan dan langsung tersimpan ke npoint.io!');
+                alert('Materi berhasil dipublikasikan dan langsung tersimpan ke Google Sheets!');
             }
 
             await saveDatabase();
@@ -1940,7 +1940,7 @@
         }
 
         function prepareEditJadwal(id) {
-            const item = activeJadwalData.find(j => j.id === id);
+            const item = activeJadwalData.find(j => j.id == id);
             if (!item) return;
 
             document.getElementById('edit-jadwal-id').value = item.id;
@@ -1999,18 +1999,14 @@
             renderData();
         }
 
-        // ================= LOGIKA BARU STATUS KEHADIRAN SESUAI PERMINTAAN =================
         function kalkulasiStatusKehadiran(jadwalTanggal, jamMulai, jamSelesai, waktuAktivitas, waktuKirimTugas = null) {
-            // Jika waktu akses kosong (tidak pernah login/akses), status otomatis Alpa
             if (!waktuAktivitas || waktuAktivitas === '-') {
                 return 'Alpa';
             }
 
-            // Ambil tanggal dari string waktu aktivitas/login (format: YYYY-MM-DD HH:mm WIB)
             const matchTanggal = waktuAktivitas.match(/(\d{4}-\d{2}-\d{2})/);
             const tanggalAktivitas = matchTanggal ? matchTanggal[1] : null;
 
-            // Ambil jam dan menit dari string waktu aktivitas
             const matchJam = waktuAktivitas.match(/(\d{2})[.:](\d{2})/);
             if (!tanggalAktivitas || !matchJam) {
                 return 'Terlambat';
@@ -2020,7 +2016,6 @@
             const startMin = timeToMin(jamMulai);
             const endMin = timeToMin(jamSelesai);
 
-            // Validasi kesesuaian Tanggal dan Rentang Jam Pelajaran (Hadir vs Terlambat)
             const isTanggalSesuai = (tanggalAktivitas === jadwalTanggal);
             const isJamSesuai = (jamAktivitasMin >= startMin && jamAktivitasMin <= endMin);
 
@@ -2054,7 +2049,7 @@
 
             dbData.absen = (dbData.absen || []).filter(a => !(String(a.jadwal_id) === String(jadwalId) && a.nama_siswa === currentUser.nama));
             
-            const newId = dbData.absen.length > 0 ? Math.max(...dbData.absen.map(i => i.id || 0)) + 1 : 1;
+            const newId = dbData.absen.length > 0 ? Math.max(...dbData.absen.map(i => Number(i.id) || 0)) + 1 : 1;
             dbData.absen.push({
                 id: newId,
                 jadwal_id: Number(jadwalId),
@@ -2091,10 +2086,10 @@
             }
 
             const waktuKirimStr = getWaktuWIB();
-            const newId = dbData.tugas.length > 0 ? Math.max(...dbData.tugas.map(i => i.id || 0)) + 1 : 1;
+            const newId = dbData.tugas.length > 0 ? Math.max(...dbData.tugas.map(i => Number(i.id) || 0)) + 1 : 1;
             dbData.tugas.push({
                 id: newId,
-                jadwal_id: jadwalId,
+                jadwal_id: Number(jadwalId),
                 nama_siswa: currentUser.nama,
                 kelas_siswa: currentUser.kelas,
                 teks_jawaban,
