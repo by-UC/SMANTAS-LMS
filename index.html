@@ -312,27 +312,24 @@
                         </div>
 
                         <div class="border-t pt-4 space-y-4">
-                            <h3 class="text-base font-bold text-gray-800">💾 Backup & Sinkronisasi Database (db.json)</h3>
+                            <h3 class="text-base font-bold text-gray-800">💾 Backup & Restore Database (npoint.io)</h3>
                             
                             <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-2">
-                                <h4 class="font-bold text-emerald-900 text-xs uppercase tracking-wide">📦 Unduh `db.json` Terbaru</h4>
-                                <p class="text-[11px] text-emerald-700">Simpan file ini dengan nama <b>db.json</b> ke dalam repositori GitHub Anda untuk memperbarui data secara permanen.</p>
+                                <h4 class="font-bold text-emerald-900 text-xs uppercase tracking-wide">📦 Unduh `db.json` Backup Lokal</h4>
+                                <p class="text-[11px] text-emerald-700">Simpan file konfigurasi cadangan untuk berjaga-jaga.</p>
                                 <div class="flex gap-2">
                                     <button onclick="handleBackupDatabase()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs flex-1 transition flex items-center justify-center gap-1.5">
                                         💾 Download db.json
-                                    </button>
-                                    <button onclick="handleSyncDb()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-xs flex-1 transition flex items-center justify-center gap-1.5 shadow">
-                                        🔄 Sync DB
                                     </button>
                                 </div>
                             </div>
 
                             <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-2">
-                                <h4 class="font-bold text-amber-900 text-xs uppercase tracking-wide">📤 Unggah db.json Lokal</h4>
-                                <p class="text-[11px] text-amber-700">Unggah file <code>db.json</code> untuk memuat data ke browser.</p>
+                                <h4 class="font-bold text-amber-900 text-xs uppercase tracking-wide">📤 Unggah & Timpa npoint.io</h4>
+                                <p class="text-[11px] text-amber-700">Unggah file <code>db.json</code> untuk memperbarui seluruh data di npoint.io secara penuh.</p>
                                 <input type="file" id="input-restore-db" accept=".json" class="w-full text-xs border p-2 rounded-lg bg-white">
                                 <button onclick="handleRestoreDatabase()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-lg text-xs w-full transition flex items-center justify-center gap-1.5">
-                                    📤 Muat db.json
+                                    📤 Upload ke npoint.io
                                 </button>
                             </div>
                         </div>
@@ -534,9 +531,12 @@
         </div>
     </div>
 
-    <!-- SCRIPT UTAMA & INTEGRASI GITHUB LOCAL db.json -->
+    <!-- SCRIPT UTAMA & INTEGRASI NPOINT.IO -->
     <script src="compressor.js"></script>
     <script>
+        // ================= INTEGRASI NPOINT.IO CLOUD STORAGE =================
+        const NPOINT_URL = 'https://api.npoint.io/91920d6ec4bfa86eb117';
+
         let dbData = {
             kelas: [],
             guru: [],
@@ -626,7 +626,7 @@
             document.body.removeChild(link);
         }
 
-        // 2. HEARTBEAT LOCALSTORAGE
+        // 2. HEARTBEAT ONLINE MONITORING
         function updateHeartbeatOnline() {
             if (!currentUser || currentUser.role === 'admin') return;
 
@@ -701,33 +701,40 @@
             loop();
         }
 
-        // 3. LOAD & SAVE DATABASE MENGGUNAKAN db.json
+        // 3. FUNGSI UTAMA LOAD & SAVE NPOINT.IO
         async function loadDatabase() {
             try {
-                const local = localStorage.getItem('lms_db_json');
-                if (local) {
-                    try { 
-                        dbData = JSON.parse(local); 
-                    } catch(err){}
+                const response = await fetch(NPOINT_URL);
+                if (response.ok) {
+                    const json = await response.json();
+                    dbData = { ...dbData, ...json };
                 } else {
-                    const responseLocal = await fetch('db.json');
-                    if (responseLocal.ok) {
-                        const json = await responseLocal.json();
-                        dbData = { ...dbData, ...json };
-                        localStorage.setItem('lms_db_json', JSON.stringify(dbData));
-                    }
+                    throw new Error('Gagal mengambil data dari npoint.io');
                 }
             } catch (e) {
-                console.error("Gagal membaca database lokal:", e);
+                console.warn("Menggunakan cache lokal karena gagal terhubung ke npoint.io:", e);
+                const local = localStorage.getItem('lms_db_json');
+                if (local) {
+                    try { dbData = JSON.parse(local); } catch(err){}
+                }
             }
         }
 
         async function saveDatabase() {
             localStorage.setItem('lms_db_json', JSON.stringify(dbData));
+            try {
+                await fetch(NPOINT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dbData)
+                });
+            } catch (e) {
+                console.error("Gagal menyimpan data secara online ke npoint.io:", e);
+            }
             renderData();
         }
 
-        // PENGGANTI SUPABASE CLIENT MENGGUNAKAN LOCALSTORAGE & db.json
+        // DATABASE CLIENT INTERACTION (MENGGANTIKAN SUPABASE)
         const supabaseClient = {
             from: (table) => ({
                 select: (columns, options = {}) => ({
@@ -948,20 +955,7 @@
             downloadAnchor.click();
             downloadAnchor.remove();
 
-            alert('File db.json berhasil diunduh! Silakan unggah/timpa file ini ke direktori GitHub Anda.');
-        }
-
-        async function handleSyncDb() {
-            await loadDatabase();
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dbData, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `db.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-
-            alert('Sync DB Berhasil! File db.json terbaru telah diunduh.');
+            alert('Backup database db.json berhasil diunduh!');
         }
 
         async function handleRestoreDatabase() {
@@ -971,7 +965,7 @@
                 return;
             }
 
-            if (!confirm('PERINGATAN SANGAT PENTING:\nProses restore ini akan MENGAPUS seluruh data yang ada dan MEMULIHKAN data dari file JSON.\nApakah Anda yakin ingin melanjutkan?')) {
+            if (!confirm('PERINGATAN SANGAT PENTING:\nProses ini akan mengunggah file db.json dan menimpa database online di npoint.io secara penuh.\nApakah Anda yakin ingin melanjutkan?')) {
                 return;
             }
 
@@ -983,7 +977,7 @@
                     const parsedData = JSON.parse(e.target.result);
                     dbData = parsedData;
                     await saveDatabase();
-                    alert('Database berhasil dipulihkan secara penuh!');
+                    alert('Database berhasil diunggah dan disinkronkan ke npoint.io!');
                     fileInput.value = '';
                     renderData();
                 } catch (err) {
@@ -1879,7 +1873,7 @@
 
                 dbData.jadwal = dbData.jadwal.map(j => j.id == editId ? { ...j, ...payload } : j);
                 catatLogHarian('guru', currentUser.username, currentUser.nama, `Mengedit materi ${selectedMapel} di kelas ${kelas}`);
-                alert('Materi berhasil direplace/diperbarui dan langsung tersimpan ke db.json!');
+                alert('Materi berhasil direplace/diperbarui dan langsung tersimpan ke npoint.io!');
             } else {
                 const newId = dbData.jadwal.length > 0 ? Math.max(...dbData.jadwal.map(i => i.id || 0)) + 1 : 1;
                 dbData.jadwal.push({ 
@@ -1887,7 +1881,7 @@
                     mapel: mapelFull, file_name, file_url, link_video, status_tugas: 'aktif', pengampu: currentUser.nama 
                 });
                 catatLogHarian('guru', currentUser.username, currentUser.nama, `Memublikasikan materi baru ${selectedMapel} untuk kelas ${kelas}`);
-                alert('Materi berhasil dipublikasikan dan langsung tersimpan ke db.json!');
+                alert('Materi berhasil dipublikasikan dan langsung tersimpan ke npoint.io!');
             }
 
             await saveDatabase();
