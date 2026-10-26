@@ -1365,10 +1365,7 @@
                 reader.readAsDataURL(file);
                 reader.onload = () => {
                     const base64String = reader.result;
-                    const fileKey = `file_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-                    
-                    localStorage.setItem(fileKey, base64String);
-
+                    // Langsung kembalikan string base64 agar tersimpan permanen di JSON database Google Sheets
                     resolve({
                         name: file.name,
                         url: base64String 
@@ -1387,13 +1384,14 @@
             body.innerHTML = '';
 
             const lowerName = fileName.toLowerCase();
-            
             let actualDataUrl = fileUrl;
-            if (fileUrl && !fileUrl.startsWith('data:')) {
+
+            // Jika fileUrl berupa key lama, ambil dari localStorage, jika tidak gunakan langsung string base64-nya
+            if (fileUrl && !fileUrl.startsWith('data:') && !fileUrl.startsWith('http')) {
                 actualDataUrl = localStorage.getItem(`file_${fileUrl}`) || fileUrl;
             }
 
-            if (actualDataUrl && actualDataUrl !== '#') {
+            if (actualDataUrl && actualDataUrl !== '#' && actualDataUrl !== 'null') {
                 if (lowerName.endsWith('.pdf')) {
                     body.innerHTML = `<iframe src="${actualDataUrl}" class="w-full h-full rounded-lg border-0"></iframe>`;
                 } else if (lowerName.match(/\.(png|jpg|jpeg)$/)) {
@@ -1412,7 +1410,7 @@
                     <div class="text-center p-6 bg-white rounded-xl shadow border space-y-4 max-w-md">
                         <div class="text-4xl">📂</div>
                         <h4 class="font-bold text-gray-800 text-base">${fileName}</h4>
-                        <p class="text-xs text-gray-500">File tidak ditemukan atau belum disinkronkan dengan benar.</p>
+                        <p class="text-xs text-gray-500">File tidak ditemukan atau belum disinkronkan dengan benar. Silakan edit materi dan unggah ulang file.</p>
                     </div>`;
             }
 
