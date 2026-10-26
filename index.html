@@ -315,16 +315,21 @@
                             <h3 class="text-base font-bold text-gray-800">💾 Backup & Restore Database Lokal (db.json)</h3>
                             
                             <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-2">
-                                <h4 class="font-bold text-emerald-900 text-xs uppercase tracking-wide">📦 Unduh `db.json` Backup</h4>
-                                <p class="text-[11px] text-emerald-700">Simpan file ini dengan nama <b>db.json</b> untuk mencadangkan data LMS Anda.</p>
-                                <button onclick="handleBackupDatabase()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs w-full transition flex items-center justify-center gap-1.5">
-                                    💾 Download db.json
-                                </button>
+                                <h4 class="font-bold text-emerald-900 text-xs uppercase tracking-wide">📦 Unduh `db.json` Backup & Sinkronisasi</h4>
+                                <p class="text-[11px] text-emerald-700">Simpan file ini dengan nama <b>db.json</b> untuk memperbarui file server lokal Anda.</p>
+                                <div class="flex gap-2">
+                                    <button onclick="handleBackupDatabase()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs flex-1 transition flex items-center justify-center gap-1.5">
+                                        💾 Download db.json
+                                    </button>
+                                    <button onclick="handleSyncDb()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-xs flex-1 transition flex items-center justify-center gap-1.5 shadow">
+                                        🔄 Sync DB
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-2">
                                 <h4 class="font-bold text-amber-900 text-xs uppercase tracking-wide">📤 Unggah db.json Lokal</h4>
-                                <p class="text-[11px] text-amber-700">Unggah file <code>db.json</code> untuk memuat data cadangan ke browser/Supabase.</p>
+                                <p class="text-[11px] text-amber-700">Unggah file <code>db.json</code> untuk memuat data cadangan ke browser.</p>
                                 <input type="file" id="input-restore-db" accept=".json" class="w-full text-xs border p-2 rounded-lg bg-white">
                                 <button onclick="handleRestoreDatabase()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-lg text-xs w-full transition flex items-center justify-center gap-1.5">
                                     📤 Muat db.json
@@ -950,6 +955,19 @@
             downloadAnchor.remove();
 
             alert('Backup database db.json berhasil diunduh!');
+        }
+
+        async function handleSyncDb() {
+            await loadDatabase();
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dbData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `db.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+
+            alert('Sync DB Berhasil! File db.json terbaru telah diunduh untuk disinkronkan ke server.');
         }
 
         async function handleRestoreDatabase() {
@@ -1867,7 +1885,7 @@
 
                 dbData.jadwal = dbData.jadwal.map(j => j.id == editId ? { ...j, ...payload } : j);
                 catatLogHarian('guru', currentUser.username, currentUser.nama, `Mengedit materi ${selectedMapel} di kelas ${kelas}`);
-                alert('Materi berhasil direplace/diperbarui!');
+                alert('Materi berhasil direplace/diperbarui dan langsung tersimpan ke database lokal!');
             } else {
                 const newId = dbData.jadwal.length > 0 ? Math.max(...dbData.jadwal.map(i => i.id || 0)) + 1 : 1;
                 dbData.jadwal.push({ 
@@ -1875,7 +1893,7 @@
                     mapel: mapelFull, file_name, file_url, link_video, status_tugas: 'aktif', pengampu: currentUser.nama 
                 });
                 catatLogHarian('guru', currentUser.username, currentUser.nama, `Memublikasikan materi baru ${selectedMapel} untuk kelas ${kelas}`);
-                alert('Materi berhasil dipublikasikan!');
+                alert('Materi berhasil dipublikasikan dan langsung tersimpan ke database lokal!');
             }
 
             await saveDatabase();
