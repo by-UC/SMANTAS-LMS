@@ -818,17 +818,24 @@
             })
         };
 
+        // DOMContentLoaded: Cegah Logout Saat Refresh Halaman
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadDatabase();
             const savedUser = localStorage.getItem('lms_user');
             if (savedUser) {
                 try {
                     currentUser = JSON.parse(savedUser);
-                    showDashboard();
                 } catch (e) {
                     localStorage.removeItem('lms_user');
+                    currentUser = null;
                 }
             }
+
+            await loadDatabase();
+
+            if (currentUser) {
+                showDashboard();
+            }
+
             const dateInput = document.getElementById('input-jadwal-tanggal');
             if (dateInput) {
                 const today = new Date().toISOString().split('T')[0];
@@ -1474,7 +1481,6 @@
             localStorage.setItem('lms_user', JSON.stringify(currentUser));
             catatLogHarian(currentUser.role, currentUser.username, currentUser.nama, 'Login ke sistem LMS');
             
-            // Catat waktu akses otomatis untuk semua materi aktif kelas siswa saat login pertama kali
             if (currentUser.role === 'siswa') {
                 await catatAksesOtomatisSiswaLogin(currentUser);
             }
@@ -1482,7 +1488,6 @@
             showDashboard();
         }
 
-        // Fungsi mencatat akses otomatis saat siswa login
         async function catatAksesOtomatisSiswaLogin(siswa) {
             const listJadwal = (dbData.jadwal || []).filter(j => j.kelas === siswa.kelas);
             const now = new Date();
@@ -1502,7 +1507,7 @@
                     if (dateStr === j.tanggal && currentMin >= startMin && currentMin <= endMin) {
                         status = 'Hadir';
                     } else if (dateStr < j.tanggal || (dateStr === j.tanggal && currentMin < startMin)) {
-                        status = 'Hadir'; // Belum mulai tapi sudah login/akses
+                        status = 'Hadir'; 
                     } else {
                         status = 'Terlambat';
                     }
