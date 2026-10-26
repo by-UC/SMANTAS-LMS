@@ -1970,6 +1970,8 @@
         }
 
         async function catatAbsenDanAkses(jadwalId, jadwalTanggal, jamMulai, jamSelesai) {
+            if (!currentUser || currentUser.role !== 'siswa') return;
+
             const now = new Date();
             const dateStr = now.toISOString().split('T')[0];
             const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -1982,25 +1984,27 @@
             let status = 'Terlambat';
             if (dateStr === jadwalTanggal && currentMin >= startMin && currentMin <= endMin) {
                 status = 'Hadir';
-            } else {
+            } else if (dateStr > jadwalTanggal || (dateStr === jadwalTanggal && currentMin > endMin)) {
                 status = 'Terlambat';
+            } else {
+                status = 'Hadir';
             }
 
-            dbData.absen = (dbData.absen || []).filter(a => !(a.jadwal_id == jadwalId && a.nama_siswa === currentUser.nama));
+            dbData.absen = (dbData.absen || []).filter(a => !(String(a.jadwal_id) === String(jadwalId) && a.nama_siswa === currentUser.nama));
+            
             const newId = dbData.absen.length > 0 ? Math.max(...dbData.absen.map(i => i.id || 0)) + 1 : 1;
             dbData.absen.push({
                 id: newId,
-                jadwal_id: jadwalId,
+                jadwal_id: Number(jadwalId),
                 nama_siswa: currentUser.nama,
                 kelas_siswa: currentUser.kelas,
                 status: status,
                 waktu_akses: fullWaktuAkses
             });
 
-            catatLogHarian('siswa', currentUser.username, currentUser.nama, `Mengakses materi/modul (Status: ${status})`);
+            catatLogHarian('siswa', currentUser.username, currentUser.nama, `Mengakses materi/modul (ID Jadwal: ${jadwalId}, Status: ${status})`);
 
             await saveDatabase();
-            renderData();
         }
 
         async function handleKirimTugas(event, jadwalId, jadwalTanggal, jamMulai, jamSelesai) {
@@ -2148,8 +2152,8 @@
 
                 const targetSiswa = listSiswa?.filter(s => s.kelas === j.kelas) || [];
                 targetSiswa.forEach(s => {
-                    const ab = listAbsen?.find(a => a.jadwal_id === j.id && a.nama_siswa === s.nama);
-                    const tg = listTugas?.find(t => t.jadwal_id === j.id && t.nama_siswa === s.nama);
+                    const ab = listAbsen?.find(a => String(a.jadwal_id) === String(j.id) && a.nama_siswa === s.nama);
+                    const tg = listTugas?.find(t => String(t.jadwal_id) === String(j.id) && t.nama_siswa === s.nama);
 
                     const waktuAktivitas = tg ? tg.waktu_kirim : (ab ? ab.waktu_akses : '-');
                     const statusAbsen = kalkulasiStatusKehadiran(j.tanggal, j.jam_mulai, j.jam_selesai, waktuAktivitas, !!tg);
@@ -2169,7 +2173,7 @@
                         "Status Tugas": statusTugas,
                         "Nilai": (tg && tg.nilai !== null && tg.nilai !== undefined) ? tg.nilai : '',
                         "Catatan Guru": (tg && tg.catatan_guru) ? tg.catatan_guru : '',
-                        "Waktu Akses/Kirim": tg ? tg.waktu_kirim : (ab ? ab.waktu_akses : '-')
+                        "Waktu Akses/Kirim": waktuAktivitas
                     });
                 });
             });
@@ -2189,8 +2193,8 @@
         }
 
         async function downloadRekapExcel(jadwalId, mapel, kelas, jamMulai, jamSelesai, tanggal, hari) {
-            const listAbsen = (dbData.absen || []).filter(a => a.jadwal_id === jadwalId);
-            const listTugas = (dbData.tugas || []).filter(t => t.jadwal_id === jadwalId);
+            const listAbsen = (dbData.absen || []).filter(a => String(a.jadwal_id) === String(jadwalId));
+            const listTugas = (dbData.tugas || []).filter(t => String(t.jadwal_id) === String(jadwalId));
             const listSiswa = (dbData.siswa || []).filter(s => s.kelas === kelas);
 
             let excelData = [];
@@ -2254,8 +2258,8 @@
                 let htmlSudah = '';
 
                 listJadwal?.forEach(j => {
-                    const ab = listAbsen?.find(a => a.jadwal_id === j.id);
-                    const tg = listTugas?.find(t => t.nama_siswa === currentUser.nama && t.jadwal_id === j.id);
+                    const ab = listAbsen?.find(a => String(a.jadwal_id) === String(j.id));
+                    const tg = listTugas?.find(t => t.nama_siswa === currentUser.nama && String(t.jadwal_id) === String(j.id));
                     const sudahKirim = !!tg;
                     const izinRemedial = tg && tg.izin_perbaikan === true;
                     let isMateriAktif = j.status_tugas === 'aktif';
@@ -2592,8 +2596,8 @@
                     const targetSiswa = listSiswa?.filter(s => s.kelas === j.kelas) || [];
 
                     targetSiswa.forEach(s => {
-                        const ab = listAbsen?.find(a => a.jadwal_id === j.id && a.nama_siswa === s.nama);
-                        const tg = listTugas?.find(t => t.jadwal_id === j.id && t.nama_siswa === s.nama);
+                        const ab = listAbsen?.find(a => String(a.jadwal_id) === String(j.id) && a.nama_siswa === s.nama);
+                        const tg = listTugas?.find(t => String(t.jadwal_id) === String(j.id) && t.nama_siswa === s.nama);
 
                         const waktuAktivitas = tg ? tg.waktu_kirim : (ab ? ab.waktu_akses : '-');
                         const statusKehadiran = kalkulasiStatusKehadiran(j.tanggal, j.jam_mulai, j.jam_selesai, waktuAktivitas, !!tg);
