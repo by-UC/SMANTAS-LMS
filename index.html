@@ -1365,7 +1365,6 @@
                 reader.readAsDataURL(file);
                 reader.onload = () => {
                     const base64String = reader.result;
-                    // Langsung kembalikan string base64 agar tersimpan permanen di JSON database Google Sheets
                     resolve({
                         name: file.name,
                         url: base64String 
@@ -1386,7 +1385,6 @@
             const lowerName = fileName.toLowerCase();
             let actualDataUrl = fileUrl;
 
-            // Jika fileUrl berupa key lama, ambil dari localStorage, jika tidak gunakan langsung string base64-nya
             if (fileUrl && !fileUrl.startsWith('data:') && !fileUrl.startsWith('http')) {
                 actualDataUrl = localStorage.getItem(`file_${fileUrl}`) || fileUrl;
             }
@@ -1892,10 +1890,10 @@
             const mapelFull = `${selectedMapel} - ${topik} - ${currentUser.nama}`;
 
             const fileInput = document.getElementById('input-jadwal-file');
-            const link_video = document.getElementById('input-jadwal-link').value;
+            const link_video = document.getElementById('input-jadwal-link').value || "";
             
-            let file_name = null;
-            let file_url = null;
+            let file_name = "";
+            let file_url = "";
 
             if (fileInput.files.length > 0) {
                 const processedFile = await processAndValidateFile(fileInput);
@@ -1903,8 +1901,8 @@
 
                 const uploaded = await uploadFileToSupabase(processedFile);
                 if (uploaded) {
-                    file_name = uploaded.name;
-                    file_url = uploaded.url;
+                    file_name = uploaded.name || "";
+                    file_url = uploaded.url || "";
                 } else {
                     return;
                 }
@@ -1912,29 +1910,48 @@
 
             if (editId) {
                 const oldJadwal = activeJadwalData.find(j => j.id == editId);
-                const finalFileName = file_name ? file_name : (oldJadwal ? oldJadwal.file_name : null);
-                const finalFileUrl = file_url ? file_url : (oldJadwal ? oldJadwal.file_url : null);
+                const finalFileName = file_name ? file_name : (oldJadwal ? oldJadwal.file_name : "");
+                const finalFileUrl = file_url ? file_url : (oldJadwal ? oldJadwal.file_url : "");
 
                 const payload = {
-                    kelas, tanggal, hari, jam_mulai, jam_selesai,
+                    kelas, 
+                    tanggal, 
+                    hari, 
+                    jam_mulai, 
+                    jam_selesai,
                     mapel: mapelFull, 
                     file_name: finalFileName, 
                     file_url: finalFileUrl,
                     link_video: link_video,
+                    status_tugas: oldJadwal ? (oldJadwal.status_tugas || "aktif") : "aktif",
                     pengampu: currentUser.nama
                 };
 
                 dbData.jadwal = dbData.jadwal.map(j => j.id == editId ? { ...j, ...payload } : j);
                 catatLogHarian('guru', currentUser.username, currentUser.nama, `Mengedit materi ${selectedMapel} di kelas ${kelas}`);
-                alert('Materi berhasil direplace/diperbarui dan langsung tersimpan ke Google Sheets!');
+                alert('Materi berhasil diperbarui dan disinkronkan ke Google Sheets!');
             } else {
                 const newId = dbData.jadwal.length > 0 ? Math.max(...dbData.jadwal.map(i => Number(i.id) || 0)) + 1 : 1;
-                dbData.jadwal.push({ 
-                    id: newId, kelas, tanggal, hari, jam_mulai, jam_selesai, 
-                    mapel: mapelFull, file_name, file_url, link_video, status_tugas: 'aktif', pengampu: currentUser.nama 
-                });
+                
+                // Memastikan SEMUA kolom terisi lengkap agar tidak ada kolom yang kosong/terlewat di Google Sheets
+                const newJadwalItem = { 
+                    id: newId, 
+                    kelas: kelas, 
+                    tanggal: tanggal, 
+                    hari: hari, 
+                    jam_mulai: jam_mulai, 
+                    jam_selesai: jam_selesai, 
+                    mapel: mapelFull, 
+                    file_name: file_name, 
+                    file_url: file_url, 
+                    link_video: link_video, 
+                    status_tugas: "aktif", 
+                    pengampu: currentUser.nama 
+                };
+
+                dbData.jadwal.push(newJadwalItem);
                 catatLogHarian('guru', currentUser.username, currentUser.nama, `Memublikasikan materi baru ${selectedMapel} untuk kelas ${kelas}`);
-                alert('Materi berhasil dipublikasikan dan langsung tersimpan ke Google Sheets!');
+                alert('Materi berhasil dipublikasikan dan disinkronkan ke Google Sheets!');
             }
 
             await saveDatabase();
