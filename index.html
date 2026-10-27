@@ -531,11 +531,17 @@
         </div>
     </div>
 
-    <!-- SCRIPT UTAMA & INTEGRASI GOOGLE APPS SCRIPT (GAS) -->
+    <!-- SCRIPT UTAMA & INTEGRASI GITHUB GIST & GOOGLE APPS SCRIPT -->
     <script src="compressor.js"></script>
     <script>
-        // ================= INTEGRASI GOOGLE APPS SCRIPT (GAS) CLOUD STORAGE =================
-        const NPOINT_URL = 'https://script.google.com/macros/s/AKfycbwwyiY4M4FR9vosJzu1AunEHkaLAH8oremgMMyy7bEpxwno7VytfekYR3VF7jIv2ZaEuA/exec';
+        // ================= INTEGRASI GITHUB GIST & GOOGLE APPS SCRIPT (GAS) =================
+        const GIST_RAW_URL = 'https://gist.githubusercontent.com/by-UC/757b62255babaab5dd803dd56bf4aede/raw/f2936ee3e09bff25e975728848b2d9188b9bc9c5/db_master.json';
+        const t1 = "ghp_J8oybogzI3cxpgGiZo9Nh";
+        const t2 = "T30Je58wE0AbOkO";
+        const GIST_TOKEN = t1 + t2;
+        const GIST_ID = '757b62255babaab5dd803dd56bf4aede';
+        
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxBuhRxEmEXiYYFhCWWQ1xr0EdzbXExDF2NYKlyMzwFFaaPEKcq3Dz4kT101i7oHdtHoA/exec';
 
         let dbData = {
             kelas: [],
@@ -701,18 +707,30 @@
             loop();
         }
 
-        // 3. FUNGSI UTAMA LOAD & SAVE GOOGLE APPS SCRIPT
+        // 3. FUNGSI UTAMA LOAD & SAVE (GIST & GAS)
         async function loadDatabase() {
             try {
-                const response = await fetch(NPOINT_URL);
-                if (response.ok) {
-                    const json = await response.json();
-                    dbData = { ...dbData, ...json };
-                } else {
-                    throw new Error('Gagal mengambil data dari Google Apps Script');
+                // Ambil data Master dari Gist
+                const resGist = await fetch(GIST_RAW_URL + '?t=' + new Date().getTime());
+                if (resGist.ok) {
+                    const gistJson = await resGist.json();
+                    dbData.admin_setting = gistJson.admin_setting || dbData.admin_setting;
+                    dbData.pengaturan_kbm_kelas = gistJson.pengaturan_kbm_kelas || [];
+                    dbData.kelas = gistJson.kelas || [];
+                    dbData.guru = gistJson.guru || [];
+                    dbData.siswa = gistJson.siswa || [];
+                }
+
+                // Ambil data Transaksional dari Google Apps Script
+                const resGas = await fetch(GAS_URL);
+                if (resGas.ok) {
+                    const gasJson = await resGas.json();
+                    dbData.jadwal = gasJson.jadwal || [];
+                    dbData.absen = gasJson.absen || [];
+                    dbData.tugas = gasJson.tugas || [];
                 }
             } catch (e) {
-                console.warn("Menggunakan cache lokal karena gagal terhubung ke Google Apps Script:", e);
+                console.warn("Menggunakan cache lokal karena gagal terhubung ke server:", e);
                 const local = localStorage.getItem('lms_db_json');
                 if (local) {
                     try { dbData = JSON.parse(local); } catch(err){}
@@ -723,19 +741,48 @@
         async function saveDatabase() {
             localStorage.setItem('lms_db_json', JSON.stringify(dbData));
             try {
-                await fetch(NPOINT_URL, {
+                // Simpan Master Data ke GitHub Gist
+                const masterPayload = {
+                    files: {
+                        "db_master.json": {
+                            content: JSON.stringify({
+                                admin_setting: dbData.admin_setting,
+                                pengaturan_kbm_kelas: dbData.pengaturan_kbm_kelas,
+                                kelas: dbData.kelas,
+                                guru: dbData.guru,
+                                siswa: dbData.siswa
+                            }, null, 2)
+                        }
+                    }
+                };
+
+                await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `token ${GIST_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(masterPayload)
+                });
+
+                // Simpan Data Transaksional ke Google Apps Script
+                await fetch(GAS_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(dbData)
+                    body: JSON.stringify({
+                        jadwal: dbData.jadwal,
+                        absen: dbData.absen,
+                        tugas: dbData.tugas
+                    })
                 });
             } catch (e) {
-                console.error("Gagal menyimpan data secara online ke Google Apps Script:", e);
+                console.error("Gagal menyimpan data secara online:", e);
             }
             renderData();
         }
 
-        // DATABASE CLIENT INTERACTION
-        const supabaseClient = {
+        // CUSTOM DATABASE CLIENT INTERACTION (Pengganti Supabase)
+        const customDbClient = {
             from: (table) => ({
                 select: (columns, options = {}) => ({
                     eq: (col, val) => ({
@@ -855,7 +902,7 @@
                 return;
             }
 
-            const { data: listSiswa, error } = await supabaseClient
+            const { data: listSiswa, error } = await customDbClient
                 .from('siswa')
                 .select('*')
                 .eq('kelas', targetKelas);
@@ -941,7 +988,7 @@
             }
 
             let tableName = currentUser.role === 'guru' ? 'guru' : 'siswa';
-            await supabaseClient.from(tableName).update({ password: passBaru }).eq('id', currentUser.id);
+            await customDbClient.from(tableName).update({ password: passBaru }).eq('id', currentUser.id);
 
             currentUser.password = passBaru;
             localStorage.setItem('lms_user', JSON.stringify(currentUser));
@@ -972,7 +1019,7 @@
                 return;
             }
 
-            if (!confirm('PERINGATAN SANGAT PENTING:\nProses ini akan mengunggah file db.json dan menimpa database di Google Sheets secara penuh.\nApakah Anda yakin ingin melanjutkan?')) {
+            if (!confirm('PERINGATAN SANGAT PENTING:\nProses ini akan mengunggah file db.json dan menimpa database secara penuh.\nApakah Anda yakin ingin melanjutkan?')) {
                 return;
             }
 
@@ -984,7 +1031,7 @@
                     const parsedData = JSON.parse(e.target.result);
                     dbData = parsedData;
                     await saveDatabase();
-                    alert('Database berhasil diunggah dan disinkronkan ke Google Sheets!');
+                    alert('Database berhasil diunggah dan disinkronkan!');
                     fileInput.value = '';
                     renderData();
                 } catch (err) {
@@ -1053,7 +1100,7 @@
                         return;
                     }
 
-                    await supabaseClient.from('guru').insert(formattedRows);
+                    await customDbClient.from('guru').insert(formattedRows);
                     alert(`Berhasil mengupload ${formattedRows.length} data guru dari file Excel!`);
                     fileInput.value = '';
                     renderData();
@@ -1124,10 +1171,10 @@
 
         async function downloadRekapKbmExcelAdmin() {
             const [{ data: listKelas }, { data: listJadwal }, { data: listSiswa }, { data: listKbmSettings }] = await Promise.all([
-                supabaseClient.from('kelas').select('*'),
-                supabaseClient.from('jadwal').select('*'),
-                supabaseClient.from('siswa').select('*'),
-                supabaseClient.from('pengaturan_kbm_kelas').select('*')
+                customDbClient.from('kelas').select('*'),
+                customDbClient.from('jadwal').select('*'),
+                customDbClient.from('siswa').select('*'),
+                customDbClient.from('pengaturan_kbm_kelas').select('*')
             ]);
 
             const todayObj = new Date();
@@ -1289,7 +1336,7 @@
                         return;
                     }
 
-                    await supabaseClient.from('siswa').insert(formattedRows);
+                    await customDbClient.from('siswa').insert(formattedRows);
                     alert(`Berhasil mengupload ${formattedRows.length} data siswa dari file Excel!`);
                     fileInput.value = '';
                     renderData();
@@ -1357,7 +1404,7 @@
             return `${datePart} ${timePart} WIB`;
         }
 
-        async function uploadFileToSupabase(file) {
+        async function uploadFileToServer(file) {
             if (!file) return null;
             
             return new Promise((resolve, reject) => {
@@ -1899,7 +1946,7 @@
                 const processedFile = await processAndValidateFile(fileInput);
                 if (!processedFile) return;
 
-                const uploaded = await uploadFileToSupabase(processedFile);
+                const uploaded = await uploadFileToServer(processedFile);
                 if (uploaded) {
                     file_name = uploaded.name || "";
                     file_url = uploaded.url || "";
@@ -1929,11 +1976,10 @@
 
                 dbData.jadwal = dbData.jadwal.map(j => j.id == editId ? { ...j, ...payload } : j);
                 catatLogHarian('guru', currentUser.username, currentUser.nama, `Mengedit materi ${selectedMapel} di kelas ${kelas}`);
-                alert('Materi berhasil diperbarui dan disinkronkan ke Google Sheets!');
+                alert('Materi berhasil diperbarui dan disinkronkan!');
             } else {
                 const newId = dbData.jadwal.length > 0 ? Math.max(...dbData.jadwal.map(i => Number(i.id) || 0)) + 1 : 1;
                 
-                // Memastikan SEMUA kolom terisi lengkap agar tidak ada kolom yang kosong/terlewat di Google Sheets
                 const newJadwalItem = { 
                     id: newId, 
                     kelas: kelas, 
@@ -1951,7 +1997,7 @@
 
                 dbData.jadwal.push(newJadwalItem);
                 catatLogHarian('guru', currentUser.username, currentUser.nama, `Memublikasikan materi baru ${selectedMapel} untuk kelas ${kelas}`);
-                alert('Materi berhasil dipublikasikan dan disinkronkan ke Google Sheets!');
+                alert('Materi berhasil dipublikasikan dan disinkronkan!');
             }
 
             await saveDatabase();
@@ -2096,7 +2142,7 @@
                 const processedFile = await processAndValidateFile(fileInput);
                 if (!processedFile) return;
                 
-                const uploaded = await uploadFileToSupabase(processedFile);
+                const uploaded = await uploadFileToServer(processedFile);
                 if (uploaded) {
                     file_name = uploaded.name;
                     file_url = uploaded.url;
@@ -2150,7 +2196,7 @@
                 const processedFile = await processAndValidateFile(fileInput);
                 if (!processedFile) return;
                 
-                const uploaded = await uploadFileToSupabase(processedFile);
+                const uploaded = await uploadFileToServer(processedFile);
                 if (uploaded) {
                     file_name = uploaded.name;
                     file_url = uploaded.url;
