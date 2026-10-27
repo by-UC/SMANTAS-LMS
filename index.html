@@ -707,35 +707,49 @@
             loop();
         }
 
-        // 3. FUNGSI UTAMA LOAD & SAVE (GIST & GAS)
+        // 3. FUNGSI UTAMA LOAD & SAVE (GIST & GAS dengan Prioritas LocalStorage)
+        function mergeUnique(localArr, remoteArr, keyField) {
+            const map = new Map();
+            remoteArr.forEach(item => map.set(item[keyField], item));
+            localArr.forEach(item => map.set(item[keyField], item));
+            return Array.from(map.values());
+        }
+
         async function loadDatabase() {
+            // Prioritaskan localStorage terlebih dahulu agar data lokal yang baru dibuat langsung tampil
+            const local = localStorage.getItem('lms_db_json');
+            if (local) {
+                try {
+                    dbData = JSON.parse(local);
+                } catch(err) {}
+            }
+
             try {
                 // Ambil data Master dari Gist
                 const resGist = await fetch(GIST_RAW_URL + '?t=' + new Date().getTime());
                 if (resGist.ok) {
                     const gistJson = await resGist.json();
-                    dbData.admin_setting = gistJson.admin_setting || dbData.admin_setting;
-                    dbData.pengaturan_kbm_kelas = gistJson.pengaturan_kbm_kelas || [];
-                    dbData.kelas = gistJson.kelas || [];
-                    dbData.guru = gistJson.guru || [];
-                    dbData.siswa = gistJson.siswa || [];
+                    if (gistJson.kelas && gistJson.kelas.length > 0) {
+                        dbData.kelas = mergeUnique(dbData.kelas || [], gistJson.kelas, 'nama');
+                        dbData.guru = mergeUnique(dbData.guru || [], gistJson.guru, 'username');
+                        dbData.siswa = mergeUnique(dbData.siswa || [], gistJson.siswa, 'username');
+                    }
+                    if (gistJson.admin_setting) dbData.admin_setting = gistJson.admin_setting;
+                    if (gistJson.pengaturan_kbm_kelas) dbData.pengaturan_kbm_kelas = gistJson.pengaturan_kbm_kelas;
                 }
 
                 // Ambil data Transaksional dari Google Apps Script
                 const resGas = await fetch(GAS_URL);
                 if (resGas.ok) {
                     const gasJson = await resGas.json();
-                    dbData.jadwal = gasJson.jadwal || [];
-                    dbData.absen = gasJson.absen || [];
-                    dbData.tugas = gasJson.tugas || [];
+                    if (gasJson.jadwal) dbData.jadwal = gasJson.jadwal;
+                    if (gasJson.absen) dbData.absen = gasJson.absen;
+                    if (gasJson.tugas) dbData.tugas = gasJson.tugas;
                 }
             } catch (e) {
                 console.warn("Menggunakan cache lokal karena gagal terhubung ke server:", e);
-                const local = localStorage.getItem('lms_db_json');
-                if (local) {
-                    try { dbData = JSON.parse(local); } catch(err){}
-                }
             }
+            localStorage.setItem('lms_db_json', JSON.stringify(dbData));
         }
 
         async function saveDatabase() {
@@ -781,7 +795,7 @@
             renderData();
         }
 
-        // CUSTOM DATABASE CLIENT INTERACTION (Pengganti Supabase)
+        // CUSTOM DATABASE CLIENT INTERACTION
         const customDbClient = {
             from: (table) => ({
                 select: (columns, options = {}) => ({
@@ -865,7 +879,7 @@
             })
         };
 
-        // DOMContentLoaded: Cegah Logout Saat Refresh Halaman
+        // DOMContentLoaded: Cegah Logout & Pastikan Sesi Terjaga Saat Reload
         document.addEventListener('DOMContentLoaded', async () => {
             const savedUser = localStorage.getItem('lms_user');
             if (savedUser) {
