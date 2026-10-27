@@ -725,7 +725,7 @@
             }
 
             try {
-                // Ambil data Master dari Gist
+                // Ambil data Master & Jadwal dari Gist
                 const resGist = await fetch(GIST_RAW_URL + '?t=' + new Date().getTime());
                 if (resGist.ok) {
                     const gistJson = await resGist.json();
@@ -734,15 +734,15 @@
                         dbData.guru = mergeUnique(dbData.guru || [], gistJson.guru, 'username');
                         dbData.siswa = mergeUnique(dbData.siswa || [], gistJson.siswa, 'username');
                     }
+                    if (gistJson.jadwal) dbData.jadwal = gistJson.jadwal;
                     if (gistJson.admin_setting) dbData.admin_setting = gistJson.admin_setting;
                     if (gistJson.pengaturan_kbm_kelas) dbData.pengaturan_kbm_kelas = gistJson.pengaturan_kbm_kelas;
                 }
 
-                // Ambil data Transaksional dari Google Apps Script
+                // Ambil data Transaksional (Absen & Tugas) dari Google Apps Script
                 const resGas = await fetch(GAS_URL);
                 if (resGas.ok) {
                     const gasJson = await resGas.json();
-                    if (gasJson.jadwal) dbData.jadwal = gasJson.jadwal;
                     if (gasJson.absen) dbData.absen = gasJson.absen;
                     if (gasJson.tugas) dbData.tugas = gasJson.tugas;
                 }
@@ -755,7 +755,7 @@
         async function saveDatabase() {
             localStorage.setItem('lms_db_json', JSON.stringify(dbData));
             try {
-                // Simpan Master Data ke GitHub Gist
+                // Simpan Master Data & Jadwal ke GitHub Gist
                 const masterPayload = {
                     files: {
                         "db_master.json": {
@@ -764,7 +764,8 @@
                                 pengaturan_kbm_kelas: dbData.pengaturan_kbm_kelas,
                                 kelas: dbData.kelas,
                                 guru: dbData.guru,
-                                siswa: dbData.siswa
+                                siswa: dbData.siswa,
+                                jadwal: dbData.jadwal
                             }, null, 2)
                         }
                     }
@@ -784,7 +785,6 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({
-                        jadwal: dbData.jadwal,
                         absen: dbData.absen,
                         tugas: dbData.tugas
                     })
