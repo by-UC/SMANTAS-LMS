@@ -707,7 +707,7 @@
             loop();
         }
 
-        // 3. FUNGSI UTAMA LOAD & SAVE (GIST & GAS dengan Prioritas LocalStorage)
+        // 3. FUNGSI UTAMA LOAD & SAVE (GIST & GAS dengan Prioritas LocalStorage & Background Sync)
         function mergeUnique(localArr, remoteArr, keyField) {
             const map = new Map();
             remoteArr.forEach(item => map.set(item[keyField], item));
@@ -716,7 +716,7 @@
         }
 
         async function loadDatabase() {
-            // Prioritaskan localStorage terlebih dahulu agar data lokal yang baru dibuat langsung tampil
+            // 1. Ambil dari localStorage terlebih dahulu agar UI langsung siap (Instant Load)
             const local = localStorage.getItem('lms_db_json');
             if (local) {
                 try {
@@ -724,75 +724,79 @@
                 } catch(err) {}
             }
 
-            try {
-                // Ambil data Master & Jadwal dari Gist
-                const resGist = await fetch(GIST_RAW_URL + '?t=' + new Date().getTime());
-                if (resGist.ok) {
-                    const gistJson = await resGist.json();
-                    if (gistJson.kelas && gistJson.kelas.length > 0) {
-                        dbData.kelas = mergeUnique(dbData.kelas || [], gistJson.kelas, 'nama');
-                        dbData.guru = mergeUnique(dbData.guru || [], gistJson.guru, 'username');
-                        dbData.siswa = mergeUnique(dbData.siswa || [], gistJson.siswa, 'username');
+            // 2. Tarik data terbaru dari Gist & GAS di background secara asinkron tanpa memblokir UI
+            setTimeout(async () => {
+                try {
+                    const resGist = await fetch(GIST_RAW_URL + '?t=' + new Date().getTime());
+                    if (resGist.ok) {
+                        const gistJson = await resGist.json();
+                        if (gistJson.kelas && gistJson.kelas.length > 0) {
+                            dbData.kelas = mergeUnique(dbData.kelas || [], gistJson.kelas, 'nama');
+                            dbData.guru = mergeUnique(dbData.guru || [], gistJson.guru, 'username');
+                            dbData.siswa = mergeUnique(dbData.siswa || [], gistJson.siswa, 'username');
+                        }
+                        if (gistJson.jadwal) dbData.jadwal = gistJson.jadwal;
+                        if (gistJson.admin_setting) dbData.admin_setting = gistJson.admin_setting;
+                        if (gistJson.pengaturan_kbm_kelas) dbData.pengaturan_kbm_kelas = gistJson.pengaturan_kbm_kelas;
                     }
-                    if (gistJson.jadwal) dbData.jadwal = gistJson.jadwal;
-                    if (gistJson.admin_setting) dbData.admin_setting = gistJson.admin_setting;
-                    if (gistJson.pengaturan_kbm_kelas) dbData.pengaturan_kbm_kelas = gistJson.pengaturan_kbm_kelas;
-                }
 
-                // Ambil data Transaksional (Absen & Tugas) dari Google Apps Script
-                const resGas = await fetch(GAS_URL);
-                if (resGas.ok) {
-                    const gasJson = await resGas.json();
-                    if (gasJson.absen) dbData.absen = gasJson.absen;
-                    if (gasJson.tugas) dbData.tugas = gasJson.tugas;
+                    const resGas = await fetch(GAS_URL);
+                    if (resGas.ok) {
+                        const gasJson = await resGas.json();
+                        if (gasJson.absen) dbData.absen = gasJson.absen;
+                        if (gasJson.tugas) dbData.tugas = gasJson.tugas;
+                    }
+                    localStorage.setItem('lms_db_json', JSON.stringify(dbData));
+                } catch (e) {
+                    console.warn("Sinkronisasi background tertunda karena kendala jaringan:", e);
                 }
-            } catch (e) {
-                console.warn("Menggunakan cache lokal karena gagal terhubung ke server:", e);
-            }
-            localStorage.setItem('lms_db_json', JSON.stringify(dbData));
+            }, 100);
         }
 
         async function saveDatabase() {
+            // Simpan instan ke localStorage agar interaksi pengguna terasa mulus/tidak lambat
             localStorage.setItem('lms_db_json', JSON.stringify(dbData));
-            try {
-                // Simpan Master Data & Jadwal ke GitHub Gist
-                const masterPayload = {
-                    files: {
-                        "db_master.json": {
-                            content: JSON.stringify({
-                                admin_setting: dbData.admin_setting,
-                                pengaturan_kbm_kelas: dbData.pengaturan_kbm_kelas,
-                                kelas: dbData.kelas,
-                                guru: dbData.guru,
-                                siswa: dbData.siswa,
-                                jadwal: dbData.jadwal
-                            }, null, 2)
-                        }
-                    }
-                };
-
-                await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `token ${GIST_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(masterPayload)
-                });
-
-                // Simpan Data Transaksional ke Google Apps Script
-                await fetch(GAS_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({
-                        absen: dbData.absen,
-                        tugas: dbData.tugas
-                    })
-                });
-            } catch (e) {
-                console.error("Gagal menyimpan data secara online:", e);
-            }
             renderData();
+
+            // Jalankan sinkronisasi online di latar belakang (non-blocking)
+            setTimeout(async () => {
+                try {
+                    const masterPayload = {
+                        files: {
+                            "db_master.json": {
+                                content: JSON.stringify({
+                                    admin_setting: dbData.admin_setting,
+                                    pengaturan_kbm_kelas: dbData.pengaturan_kbm_kelas,
+                                    kelas: dbData.kelas,
+                                    guru: dbData.guru,
+                                    siswa: dbData.siswa,
+                                    jadwal: dbData.jadwal
+                                }, null, 2)
+                            }
+                        }
+                    };
+
+                    await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `token ${GIST_TOKEN}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(masterPayload)
+                    });
+
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            absen: dbData.absen,
+                            tugas: dbData.tugas
+                        })
+                    });
+                } catch (e) {
+                    console.error("Sinkronisasi online tertunda:", e);
+                }
+            }, 50);
         }
 
         // CUSTOM DATABASE CLIENT INTERACTION
