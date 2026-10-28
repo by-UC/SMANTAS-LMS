@@ -3,29 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LMS Portal - SMA Negeri 1 Tanjungsari</title>
-    <!-- Tailwind CSS -->
+    <title>LMS Portal - SMAN 1 Tanjungsari</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS (XLSX) Library untuk Ekspor & Baca Excel -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
     <style>
         @media print {
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; background: #fff; }
-            .kartu-siswa {
-                width: 5cm !important; min-width: 5cm !important; max-width: 5cm !important;
-                height: auto !important; page-break-inside: avoid; break-inside: avoid;
-                margin-bottom: 0.4cm; border: 1px solid #000 !important; padding: 0.2cm !important;
-                box-sizing: border-box !important; background-color: #ffffff !important;
-                -webkit-print-color-adjust: exact; print-color-adjust: exact;
+            body * {
+                visibility: hidden;
             }
-            .no-print { display: none !important; }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: #fff;
+            }
+            .kartu-siswa {
+                width: 5cm !important;
+                min-width: 5cm !important;
+                max-width: 5cm !important;
+                height: auto !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin-bottom: 0.4cm;
+                border: 1px solid #000 !important;
+                padding: 0.2cm !important;
+                box-sizing: border-box !important;
+                background-color: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-50 font-sans antialiased text-gray-800">
+<body class="bg-gray-100 font-sans text-gray-900 antialiased min-h-screen">
 
     <!-- ================= 1. HALAMAN LOGIN ================= -->
     <div id="login-section" class="flex items-center justify-center min-h-screen px-4">
@@ -70,30 +87,49 @@
                     <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
                     <span id="user-info-text">Role</span>
                 </span>
-                <button id="btn-ganti-password-self" onclick="bukaModalGantiPasswordSelf()" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">🔑 Ganti Password</button>
+                
+                <button id="btn-ganti-password-self" onclick="bukaModalGantiPasswordSelf()" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">
+                    🔑 Ganti Password
+                </button>
+
                 <button onclick="handleLogout()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">Keluar</button>
             </div>
         </header>
 
         <main class="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
+            
             <!-- DASHBOARD ADMIN -->
             <div id="content-admin" class="role-content hidden space-y-6">
+                <!-- Stat Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Total Kelas -->
                     <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
                         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">TOTAL KELAS</p>
                         <h3 id="stat-total-kelas" class="text-2xl sm:text-3xl font-black text-gray-800 mt-2">0</h3>
                     </div>
+
+                    <!-- Total Guru -->
                     <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between relative">
                         <div class="flex justify-between items-start">
                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">TOTAL GURU</p>
-                            <span class="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-[11px] font-bold"><span id="stat-guru-online">0</span> Aktif</span>
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1">
+                                    <span id="stat-guru-online">0</span> Aktif
+                                </span>
+                            </div>
                         </div>
                         <h3 id="stat-total-guru" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3>
                     </div>
+
+                    <!-- Total Siswa -->
                     <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between relative">
                         <div class="flex justify-between items-start">
                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">TOTAL SISWA</p>
-                            <span class="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-[11px] font-bold"><span id="stat-siswa-online">0</span> Aktif</span>
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1">
+                                    <span id="stat-siswa-online">0</span> Aktif
+                                </span>
+                            </div>
                         </div>
                         <h3 id="stat-total-siswa" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3>
                     </div>
@@ -109,6 +145,7 @@
                 </div>
 
                 <div class="bg-white p-4 sm:p-6 rounded-b-xl shadow-sm border border-t-0 border-gray-100">
+                    <!-- Tab Kelas -->
                     <div id="admin-tab-kelas" class="admin-tab-content space-y-4">
                         <form onsubmit="handleCreateClass(event)" class="flex flex-wrap sm:flex-nowrap gap-3 items-center">
                             <input type="text" id="input-nama-kelas" required placeholder="Nama Kelas Baru (Contoh: X-1)" class="w-full sm:w-80 p-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
@@ -116,172 +153,253 @@
                         </form>
                         <ul id="list-kelas-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
                     </div>
-                    <!-- Konten Tab Admin Lainnya (Guru, Siswa, Monitoring, Setting) dapat disesuaikan -->
+
+                    <!-- Tab Guru & Mata Pelajaran -->
+                    <div id="admin-tab-guru" class="admin-tab-content hidden space-y-4">
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <h3 id="form-guru-title" class="text-base font-bold text-gray-800">Tambah Guru & Mata Pelajaran yang Diampu</h3>
+                        </div>
+
+                        <form id="form-guru-admin" onsubmit="handleCreateOrUpdateGuru(event)" class="space-y-3 max-w-lg pt-3">
+                            <input type="hidden" id="edit-guru-id" value="">
+                            <input type="text" id="input-nama-guru" required placeholder="Nama & Gelar Guru" class="w-full p-2.5 border rounded-lg text-sm">
+                            <input type="text" id="input-mapel-guru" required placeholder="Mata Pelajaran (Gunakan koma jika > 1, misal: KIMIA, BIOLOGI)" class="w-full p-2.5 border rounded-lg text-sm">
+                            <input type="text" id="input-username-guru" required placeholder="Username" class="w-full p-2.5 border rounded-lg text-sm">
+                            <input type="text" id="input-password-guru" required placeholder="Password" class="w-full p-2.5 border rounded-lg text-sm">
+                            <div class="flex gap-2">
+                                <button type="submit" id="btn-submit-guru" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition">Simpan Guru</button>
+                                <button type="button" id="btn-cancel-guru" onclick="resetFormGuru()" class="hidden bg-gray-400 hover:bg-gray-500 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition">Batal</button>
+                            </div>
+                        </form>
+                        <ul id="list-guru-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
+                    </div>
+
+                    <!-- Tab Siswa -->
+                    <div id="admin-tab-siswa" class="admin-tab-content hidden space-y-4">
+                        <div class="border-t pt-4 space-y-3">
+                            <input type="text" id="search-siswa-input" oninput="renderData()" placeholder="Cari siswa..." class="p-2.5 border rounded-lg text-xs w-full sm:w-72">
+                            <ul id="list-siswa-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
+                        </div>
+                    </div>
+
+                    <!-- Tab Live Monitoring -->
+                    <div id="admin-tab-monitoring" class="admin-tab-content hidden space-y-4">
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <h3 class="text-base font-bold text-gray-800">Live Monitoring Siswa & Jam KBM (Real-Time)</h3>
+                        </div>
+                        <div id="live-monitoring-container" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
+                    </div>
+
+                    <!-- Tab Pengaturan Admin -->
+                    <div id="admin-tab-setting" class="admin-tab-content hidden space-y-6 max-w-lg">
+                        <div class="space-y-4">
+                            <h3 class="text-base font-bold text-gray-800">Pengaturan Password Admin</h3>
+                            <div class="bg-gray-50 p-3 rounded-lg border text-sm flex justify-between items-center">
+                                <span>Password Admin Saat Ini:</span>
+                                <span id="display-admin-pass" class="font-mono font-bold bg-gray-200 px-2 py-1 rounded">••••••••</span>
+                            </div>
+                            <form onsubmit="handleResetAdminPassword(event)" class="space-y-3">
+                                <input type="password" id="new-admin-password" required placeholder="Masukkan Password Baru Admin" class="w-full p-2.5 border rounded-lg text-sm">
+                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm">Reset / Ganti Password Admin</button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- DASHBOARD GURU -->
             <div id="content-guru" class="role-content hidden space-y-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Guru</h2>
-                <!-- Sediakan Form Pembuatan Materi & Kontrol Tugas -->
+                <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
+                    <form id="form-jadwal-guru" onsubmit="handleCreateOrUpdateJadwal(event)" class="space-y-3">
+                        <input type="hidden" id="edit-jadwal-id" value="">
+                        <select id="input-jadwal-kelas" required class="w-full p-2.5 border rounded-lg text-sm"><option value="">Pilih Kelas...</option></select>
+                        <input type="date" id="input-jadwal-tanggal" required class="w-full p-2.5 border rounded-lg text-sm">
+                        <input type="text" id="input-jadwal-mapel" required placeholder="Topik Pelajaran" class="w-full p-2.5 border rounded-lg text-sm">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Unggah Lampiran Modul (Gambar/PDF/Word):</label>
+                            <input type="file" id="input-jadwal-file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" class="w-full text-xs border p-2 rounded-lg bg-gray-50">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-lg text-sm shadow hover:bg-blue-700 transition">Publikasikan Materi (Google Drive)</button>
+                    </form>
+                </div>
             </div>
 
             <!-- DASHBOARD SISWA -->
             <div id="content-siswa" class="role-content hidden space-y-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Siswa</h2>
+                <div id="list-jadwal-belum" class="space-y-4"></div>
             </div>
+
         </main>
     </div>
 
-    <!-- AREA CETAK & MODAL -->
-    <div id="print-area" class="hidden"></div>
-
     <script>
-        // ================= KONFIGURASI GIST MODULAR =================
-        const GIST_ID = '757b62255babaab5dd803dd56bf4aede';
-        const t1 = "ghp_J8oybogzI3cxpgGiZo9Nh";
-        const t2 = "T30Je58wE0AbOkO";
-        const GIST_TOKEN = t1 + t2;
+        // INTEGRASI GIST GITHUB & GAS GOOGLE DRIVE
+        const GIST_USER_URL    = 'https://gist.githubusercontent.com/by-UC/e15dd382065a96876b3041bab40bf710/raw/db_user.json';
+        const GIST_SETTING_URL = 'https://gist.githubusercontent.com/by-UC/6d9a7f88b70c8122b6803be6e9ac241e/raw/db_setting.json';
+        const GIST_JADWAL_URL  = 'https://gist.githubusercontent.com/by-UC/77f20c1cfa75110dc763ca3c8daf84a8/raw/db_jadwal.json';
+        const GIST_ABSEN_URL   = 'https://gist.githubusercontent.com/by-UC/25cda61c00a78a5cc032b1e04bcfe912/raw/db_absen.json';
+        const GIST_TUGAS_URL   = 'https://gist.githubusercontent.com/by-UC/6dbb4c4b91ef7306eacd46bc4b0b0e7f/raw/db_tugas.json';
 
-        const GIST_USERS_URL = `https://gist.githubusercontent.com/by-UC/e15dd382065a96876b3041bab40bf710/raw/db_users.json`;
-        const GIST_JADWAL_URL = `https://gist.githubusercontent.com/by-UC/77f20c1cfa75110dc763ca3c8daf84a8/raw/db_jadwal_materi.json`;
-        const GIST_SETTINGS_URL = `https://gist.githubusercontent.com/by-UC/6d9a7f88b70c8122b6803be6e9ac241e/raw/db_settings.json`;
-        
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzsiBjJGcjBnpRiZHfEsXUhi7lyvNKZgNS6xeDwHsPD0fp3-8KJDMc81NUCA9DLKdyM/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxBuhRxEmEXiYYFhCWWQ1xr0EdzbXExDF2NYKlyMzwFFaaPEKcq3Dz4kT101i7oHdtHoA/exec';
 
         let dbData = {
-            kelas: [], guru: [], siswa: [], jadwal: [], absen: [], tugas: [], pengaturan_kbm_kelas: [],
-            admin_setting: [{ key: 'admin_password', value: 'admin123' }]
+            guru: [], siswa: [], kelas: [], admin_setting: [{ key: 'admin_password', value: 'admin123' }],
+            jadwal: [], absen: [], tugas: []
         };
         let currentUser = null;
 
-        // 1. LOAD DATABASE SECARA MODULAR (MENGHINDARI OVERLOAD SATU FILE)
         async function loadDatabase() {
-            const local = localStorage.getItem('lms_db_json');
-            if (local) {
-                try { dbData = JSON.parse(local); } catch(err) {}
-            }
+            try {
+                const [rUser, rSetting, rJadwal] = await Promise.all([
+                    fetch(GIST_USER_URL + '?t=' + Date.now()).then(r => r.json()),
+                    fetch(GIST_SETTING_URL + '?t=' + Date.now()).then(r => r.json()),
+                    fetch(GIST_JADWAL_URL + '?t=' + Date.now()).then(r => r.json())
+                ]);
 
-            setTimeout(async () => {
+                dbData.guru = rUser.guru || [];
+                dbData.siswa = rUser.siswa || [];
+                dbData.kelas = rSetting.kelas || [];
+                dbData.admin_setting = rSetting.admin_setting || [{ key: 'admin_password', value: 'admin123' }];
+                dbData.jadwal = rJadwal.jadwal || [];
+
                 try {
-                    const [resUsers, resJadwal, resSettings, resGas] = await Promise.all([
-                        fetch(GIST_USERS_URL + '?t=' + Date.now()).catch(() => null),
-                        fetch(GIST_JADWAL_URL + '?t=' + Date.now()).catch(() => null),
-                        fetch(GIST_SETTINGS_URL + '?t=' + Date.now()).catch(() => null),
-                        fetch(GAS_URL).catch(() => null)
-                    ]);
-
-                    if (resUsers && resUsers.ok) {
-                        const d = await resUsers.json();
-                        dbData.guru = d.guru || [];
-                        dbData.siswa = d.siswa || [];
-                    }
-                    if (resJadwal && resJadwal.ok) {
-                        const d = await resJadwal.json();
-                        dbData.jadwal = d.jadwal || [];
-                    }
-                    if (resSettings && resSettings.ok) {
-                        const d = await resSettings.json();
-                        dbData.kelas = d.kelas || [];
-                        dbData.admin_setting = d.admin_setting || dbData.admin_setting;
-                        dbData.pengaturan_kbm_kelas = d.pengaturan_kbm_kelas || [];
-                    }
-                    if (resGas && resGas.ok) {
-                        const d = await resGas.json();
-                        dbData.absen = d.absen || [];
-                        dbData.tugas = d.tugas || [];
-                    }
-                    localStorage.setItem('lms_db_json', JSON.stringify(dbData));
-                } catch (e) {
-                    console.warn("Sinkronisasi background tertunda:", e);
+                    const rGas = await fetch(GAS_URL).then(r => r.json());
+                    dbData.absen = rGas.absen || [];
+                    dbData.tugas = rGas.tugas || [];
+                } catch (gasErr) {
+                    console.warn('Google Apps Script fetch info:', gasErr);
                 }
-            }, 100);
+            } catch(e) {
+                console.warn('Load data warning:', e);
+            }
         }
 
-        // 2. SAVE DATABASE SECARA TERPISAH (MODULAR PATCH)
-        async function saveDatabase() {
-            localStorage.setItem('lms_db_json', JSON.stringify(dbData));
-
-            setTimeout(async () => {
-                try {
-                    const modularPayload = {
-                        files: {
-                            "db_users.json": { content: JSON.stringify({ guru: dbData.guru, siswa: dbData.siswa }, null, 2) },
-                            "db_jadwal_materi.json": { content: JSON.stringify({ jadwal: dbData.jadwal, tugas: dbData.tugas }, null, 2) },
-                            "db_settings.json": { content: JSON.stringify({ admin_setting: dbData.admin_setting, pengaturan_kbm_kelas: dbData.pengaturan_kbm_kelas, kelas: dbData.kelas }, null, 2) }
-                        }
+        async function uploadFileToDrive(file, category, folderName) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = async () => {
+                    const payload = {
+                        action: 'uploadFile',
+                        fileBase64: reader.result,
+                        fileName: file.name,
+                        category: category,
+                        folderName: folderName
                     };
-
-                    await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Authorization': `token ${GIST_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(modularPayload)
-                    });
-
-                    await fetch(GAS_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify({ absen: dbData.absen, tugas: dbData.tugas })
-                    });
-                } catch (e) {
-                    console.error("Gagal sinkronisasi online:", e);
-                }
-            }, 50);
+                    try {
+                        const res = await fetch(GAS_URL, {
+                            method: 'POST',
+                            body: JSON.stringify(payload)
+                        }).then(r => r.json());
+                        
+                        if (res.status === 'success') resolve(res.file_url);
+                        else reject(res.message);
+                    } catch(err) {
+                        reject(err);
+                    }
+                };
+            });
         }
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            const savedUser = localStorage.getItem('lms_user');
-            if (savedUser) {
-                try { currentUser = JSON.parse(savedUser); } catch (e) { currentUser = null; }
-            }
-            await loadDatabase();
-            if (currentUser) showDashboard();
-        });
-
-        async function handleLogin(event) {
-            event.preventDefault();
+        async function handleLogin(e) {
+            e.preventDefault();
             await loadDatabase();
             const role = document.getElementById('role-select').value;
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value.trim();
 
             if (role === 'admin') {
-                const setting = (dbData.admin_setting || []).find(i => i.key === 'admin_password');
-                const actualAdminPass = setting ? setting.value : 'admin123';
-                if (username === 'admin' && password === actualAdminPass) {
+                const actualPass = dbData.admin_setting[0].value;
+                if (username === 'admin' && password === actualPass) {
                     currentUser = { role: 'admin', nama: 'Administrator' };
-                } else { alert('Login Admin salah!'); return; }
+                } else { alert('Login Admin Salah!'); return; }
             } else if (role === 'guru') {
-                const g = (dbData.guru || []).find(i => i.username === username && i.password === password);
-                if (!g) { alert('Username/Password Guru salah!'); return; }
+                const g = dbData.guru.find(x => x.username === username && x.password === password);
+                if (!g) { alert('Guru Salah!'); return; }
                 currentUser = { role: 'guru', ...g };
             } else if (role === 'siswa') {
-                const s = (dbData.siswa || []).find(i => i.username === username && i.password === password);
-                if (!s) { alert('Username/Password Siswa salah!'); return; }
+                const s = dbData.siswa.find(x => x.username === username && x.password === password);
+                if (!s) { alert('Siswa Salah!'); return; }
                 currentUser = { role: 'siswa', ...s };
             }
 
-            localStorage.setItem('lms_user', JSON.stringify(currentUser));
-            showDashboard();
-        }
-
-        function showDashboard() {
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('dashboard-section').classList.remove('hidden');
             document.querySelectorAll('.role-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`content-${currentUser.role}`).classList.remove('hidden');
             document.getElementById('user-info-text').innerText = currentUser.nama;
+            renderData();
         }
 
         function handleLogout() {
             currentUser = null;
-            localStorage.removeItem('lms_user');
             document.getElementById('dashboard-section').classList.add('hidden');
             document.getElementById('login-section').classList.remove('hidden');
         }
+
+        function switchAdminTab(t) {
+            document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.admin-tab-btn').forEach(el => {
+                el.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                el.classList.add('text-gray-500');
+            });
+            document.getElementById(`admin-tab-${t}`).classList.remove('hidden');
+            const btn = document.getElementById(`tab-btn-${t}`);
+            if (btn) {
+                btn.classList.remove('text-gray-500');
+                btn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            }
+        }
+
+        async function handleCreateOrUpdateJadwal(e) {
+            e.preventDefault();
+            const kelas = document.getElementById('input-jadwal-kelas').value;
+            const tanggal = document.getElementById('input-jadwal-tanggal').value;
+            const mapel = document.getElementById('input-jadwal-mapel').value;
+            const fileInput = document.getElementById('input-jadwal-file');
+
+            let file_url = "";
+            if (fileInput.files.length > 0) {
+                try {
+                    file_url = await uploadFileToDrive(fileInput.files[0], 'materi', currentUser.nama);
+                } catch(e) {
+                    console.error("Gagal upload file:", e);
+                }
+            }
+
+            const newId = dbData.jadwal.length + 1;
+            dbData.jadwal.push({ id: newId, kelas, tanggal, mapel, file_name: fileInput.files[0]?.name || '', file_url, pengampu: currentUser.nama });
+            alert('Materi Berhasil Diunggah ke Google Drive Subfolder Guru!');
+            renderData();
+        }
+
+        function renderData() {
+            if (!currentUser) return;
+            document.getElementById('stat-total-kelas').innerText = dbData.kelas.length;
+            document.getElementById('stat-total-guru').innerText = dbData.guru.length;
+            document.getElementById('stat-total-siswa').innerText = dbData.siswa.length;
+            document.getElementById('display-admin-pass').innerText = dbData.admin_setting[0].value;
+
+            const listKelas = document.getElementById('list-kelas-admin');
+            if (listKelas) listKelas.innerHTML = dbData.kelas.map(k => `<li class="p-2 border rounded bg-white shadow-sm">${k.nama}</li>`).join('');
+
+            const listGuru = document.getElementById('list-guru-admin');
+            if (listGuru) listGuru.innerHTML = dbData.guru.map(g => `<li class="p-2 border rounded bg-white shadow-sm">${g.nama} <span class="text-xs text-gray-500">(${g.mapel})</span></li>`).join('');
+
+            const selKelas = document.getElementById('input-jadwal-kelas');
+            if (selKelas) selKelas.innerHTML = '<option value="">Pilih Kelas...</option>' + dbData.kelas.map(k => `<option value="${k.nama}">${k.nama}</option>`).join('');
+
+            const listSiswa = document.getElementById('list-siswa-admin');
+            if (listSiswa) {
+                const searchVal = (document.getElementById('search-siswa-input')?.value || '').toLowerCase();
+                const filtered = dbData.siswa.filter(s => s.nama.toLowerCase().includes(searchVal) || s.kelas.toLowerCase().includes(searchVal));
+                listSiswa.innerHTML = filtered.slice(0, 50).map(s => `<li class="p-2 border rounded bg-white shadow-sm flex justify-between"><span>${s.nama} (${s.kelas})</span><span class="font-mono text-xs text-gray-500">${s.username}</span></li>`).join('');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadDatabase);
     </script>
 </body>
 </html>
