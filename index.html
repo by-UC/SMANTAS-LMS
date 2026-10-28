@@ -8,44 +8,25 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS (XLSX) Library untuk Ekspor & Baca Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- Style Khusus Cetak Kartu Siswa (Lebar 5cm, Tinggi Bebas/Auto) -->
+
     <style>
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            #print-area, #print-area * {
-                visibility: visible;
-            }
-            #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                background: #fff;
-            }
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; background: #fff; }
             .kartu-siswa {
-                width: 5cm !important;
-                min-width: 5cm !important;
-                max-width: 5cm !important;
-                height: auto !important;
-                page-break-inside: avoid;
-                break-inside: avoid;
-                margin-bottom: 0.4cm;
-                border: 1px solid #000 !important;
-                padding: 0.2cm !important;
-                box-sizing: border-box !important;
-                background-color: #ffffff !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+                width: 5cm !important; min-width: 5cm !important; max-width: 5cm !important;
+                height: auto !important; page-break-inside: avoid; break-inside: avoid;
+                margin-bottom: 0.4cm; border: 1px solid #000 !important; padding: 0.2cm !important;
+                box-sizing: border-box !important; background-color: #ffffff !important;
+                -webkit-print-color-adjust: exact; print-color-adjust: exact;
             }
-            .no-print {
-                display: none !important;
-            }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
 <body class="bg-gray-50 font-sans antialiased text-gray-800">
+
     <!-- ================= 1. HALAMAN LOGIN ================= -->
     <div id="login-section" class="flex items-center justify-center min-h-screen px-4">
         <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
@@ -85,15 +66,8 @@
                 <p class="text-xs text-gray-400 hidden sm:block">Kabupaten Bogor</p>
             </div>
             <div class="flex items-center space-x-2 sm:space-x-4">
-                <span id="user-info-badge" class="px-3 py-1 bg-green-100 text-blue-700 rounded-full text-xs sm:text-sm font-bold flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-                    <span id="user-info-text">Role</span>
-                </span>
-                
-                <button id="btn-ganti-password-self" onclick="bukaModalGantiPasswordSelf()" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">
-                    🔑 Ganti Password
-                </button>
-
+                <span id="user-info-badge" class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs sm:text-sm font-bold">Role</span>
+                <button id="btn-ganti-password-self" onclick="bukaModalGantiPasswordSelf()" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">🔑 Ganti Password</button>
                 <button onclick="handleLogout()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">Keluar</button>
             </div>
         </header>
@@ -102,48 +76,13 @@
             
             <!-- DASHBOARD ADMIN -->
             <div id="content-admin" class="role-content hidden space-y-6">
-                <!-- Stat Cards -->
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Administrator</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <!-- Total Kelas -->
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
-                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">TOTAL KELAS</p>
-                        <h3 id="stat-total-kelas" class="text-2xl sm:text-3xl font-black text-gray-800 mt-2">0</h3>
-                    </div>
-
-                    <!-- Total Guru -->
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between relative">
-                        <div class="flex justify-between items-start">
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">TOTAL GURU</p>
-                            <div class="flex flex-col items-end gap-1">
-                                <span class="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1">
-                                    <span id="stat-guru-online">0</span> Aktif
-                                </span>
-                                <button onclick="downloadLogTxt('guru')" class="bg-slate-800 hover:bg-slate-900 text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition shadow-sm">
-                                    📋 log
-                                </button>
-                            </div>
-                        </div>
-                        <h3 id="stat-total-guru" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3>
-                    </div>
-
-                    <!-- Total Siswa -->
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between relative">
-                        <div class="flex justify-between items-start">
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">TOTAL SISWA</p>
-                            <div class="flex flex-col items-end gap-1">
-                                <span class="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1">
-                                    <span id="stat-siswa-online">0</span> Aktif
-                                </span>
-                                <button onclick="downloadLogTxt('siswa')" class="bg-slate-800 hover:bg-slate-900 text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition shadow-sm">
-                                    📋 log
-                                </button>
-                            </div>
-                        </div>
-                        <h3 id="stat-total-siswa" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3>
-                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100"><p class="text-xs font-bold text-gray-400 uppercase">Total Kelas</p><h3 id="stat-total-kelas" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3></div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100"><p class="text-xs font-bold text-gray-400 uppercase">Total Guru</p><h3 id="stat-total-guru" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3></div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100"><p class="text-xs font-bold text-gray-400 uppercase">Total Siswa</p><h3 id="stat-total-siswa" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3></div>
                 </div>
 
-                <!-- Tab Navigasi Admin -->
                 <div class="flex flex-wrap border-b border-gray-200 bg-white rounded-t-xl shadow-sm overflow-hidden">
                     <button onclick="switchAdminTab('kelas')" id="tab-btn-kelas" class="admin-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-blue-600 border-b-2 border-blue-600 transition">Kelas</button>
                     <button onclick="switchAdminTab('guru')" id="tab-btn-guru" class="admin-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-gray-500 transition">Guru & Mapel</button>
@@ -153,83 +92,25 @@
                 </div>
 
                 <div class="bg-white p-4 sm:p-6 rounded-b-xl shadow-sm border border-t-0 border-gray-100">
-                    <!-- Tab Kelas -->
                     <div id="admin-tab-kelas" class="admin-tab-content space-y-4">
-                        <form onsubmit="handleCreateClass(event)" class="flex flex-wrap sm:flex-nowrap gap-3 items-center">
-                            <input type="text" id="input-nama-kelas" required placeholder="Nama Kelas Baru (Contoh: X-1)" class="w-full sm:w-80 p-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-lg text-sm shadow transition">Buat Kelas</button>
-                        </form>
+                        <h3 class="text-base font-bold text-gray-800">Manajemen Kelas</h3>
                         <ul id="list-kelas-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
                     </div>
-
-                    <!-- Tab Guru & Mata Pelajaran -->
                     <div id="admin-tab-guru" class="admin-tab-content hidden space-y-4">
-                        <div class="flex flex-wrap justify-between items-center gap-2">
-                            <h3 id="form-guru-title" class="text-base font-bold text-gray-800">Tambah Guru & Mata Pelajaran yang Diampu</h3>
-                            <button onclick="downloadTemplateGuruExcel()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1 shadow">
-                                📥 Download Template Form Guru
-                            </button>
-                        </div>
-                        <div class="bg-purple-50 border border-purple-200 p-4 rounded-xl space-y-3 max-w-lg">
-                            <h4 class="font-bold text-purple-900 text-xs uppercase tracking-wide">📂 Upload Excel Data Guru (.xlsx / .xls)</h4>
-                            <input type="file" id="input-excel-guru" accept=".xlsx, .xls" class="w-full text-xs border p-2 rounded-lg bg-white">
-                            <button onclick="handleUploadExcelGuru()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs w-full transition">Proses Upload Excel Guru</button>
-                        </div>
-                        <form id="form-guru-admin" onsubmit="handleCreateOrUpdateGuru(event)" class="space-y-3 max-w-lg border-t pt-3">
-                            <input type="hidden" id="edit-guru-id" value="">
-                            <input type="text" id="input-nama-guru" required placeholder="Nama & Gelar Guru" class="w-full p-2.5 border rounded-lg text-sm">
-                            <input type="text" id="input-mapel-guru" required placeholder="Mata Pelajaran (Gunakan koma jika > 1, misal: KIMIA, BIOLOGI)" class="w-full p-2.5 border rounded-lg text-sm">
-                            <input type="text" id="input-username-guru" required placeholder="Username" class="w-full p-2.5 border rounded-lg text-sm">
-                            <input type="text" id="input-password-guru" required placeholder="Password" class="w-full p-2.5 border rounded-lg text-sm">
-                            <div class="flex gap-2">
-                                <button type="submit" id="btn-submit-guru" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition">Simpan Guru</button>
-                                <button type="button" id="btn-cancel-guru" onclick="resetFormGuru()" class="hidden bg-gray-400 hover:bg-gray-500 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition">Batal</button>
-                            </div>
-                        </form>
+                        <h3 class="text-base font-bold text-gray-800">Manajemen Guru</h3>
                         <ul id="list-guru-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
                     </div>
-
-                    <!-- Tab Siswa -->
                     <div id="admin-tab-siswa" class="admin-tab-content hidden space-y-4">
-                        <div class="flex flex-wrap justify-between items-center gap-2">
-                            <h3 class="text-base font-bold text-gray-800">Upload & Manajemen Data Siswa</h3>
-                            <div class="flex flex-wrap gap-2">
-                                <button onclick="downloadTemplateSiswaExcel()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1">📥 Download Template Form Siswa</button>
-                                <button onclick="handleDeleteAllSiswa()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition">🗑️ Hapus Semua Siswa</button>
-                            </div>
-                        </div>
-                        <div class="bg-teal-50 border border-teal-200 p-4 rounded-xl space-y-3 max-w-lg">
-                            <h4 class="font-bold text-teal-900 text-xs uppercase tracking-wide">🪪 Cetak Kartu Siswa Per Kelas (Lebar 5 cm)</h4>
-                            <div class="flex gap-2">
-                                <select id="select-kelas-cetak-kartu" class="flex-1 p-2 border rounded-lg text-xs bg-white font-semibold">
-                                    <option value="">-- Pilih Kelas --</option>
-                                </select>
-                                <button onclick="cetakKartuSiswaPerKelas()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition">🖨️ Cetak Kartu</button>
-                            </div>
-                        </div>
-                        <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-3 max-w-lg">
-                            <h4 class="font-bold text-blue-900 text-xs uppercase tracking-wide">📂 Upload File Excel Siswa (.xlsx / .xls)</h4>
-                            <input type="file" id="input-excel-siswa" accept=".xlsx, .xls" class="w-full text-xs border p-2 rounded-lg bg-white">
-                            <button onclick="handleUploadExcelSiswa()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs w-full transition">Proses Upload File Excel</button>
-                        </div>
+                        <h3 class="text-base font-bold text-gray-800">Manajemen Siswa</h3>
                         <ul id="list-siswa-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
                     </div>
-
-                    <!-- Tab Live Monitoring -->
                     <div id="admin-tab-monitoring" class="admin-tab-content hidden space-y-4">
-                        <h3 class="text-base font-bold text-gray-800">Live Monitoring Siswa & Jam KBM (Real-Time)</h3>
-                        <div id="live-monitoring-container" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
+                        <h3 class="text-base font-bold text-gray-800">Live Monitoring</h3>
+                        <div id="live-monitoring-container" class="space-y-3"></div>
                     </div>
-
-                    <!-- Tab Pengaturan Admin -->
-                    <div id="admin-tab-setting" class="admin-tab-content hidden space-y-6 max-w-lg">
-                        <div class="space-y-4">
-                            <h3 class="text-base font-bold text-gray-800">Pengaturan Password Admin</h3>
-                            <form onsubmit="handleResetAdminPassword(event)" class="space-y-3">
-                                <input type="password" id="new-admin-password" required placeholder="Masukkan Password Baru Admin" class="w-full p-2.5 border rounded-lg text-sm">
-                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm">Ganti Password Admin</button>
-                            </form>
-                        </div>
+                    <div id="admin-tab-setting" class="admin-tab-content hidden space-y-4">
+                        <h3 class="text-base font-bold text-gray-800">Pengaturan Admin</h3>
+                        <p class="text-xs text-gray-600">Password admin dikelola melalui `db_settings.json`.</p>
                     </div>
                 </div>
             </div>
@@ -239,35 +120,24 @@
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Guru</h2>
                 <div class="flex flex-wrap border-b border-gray-200 bg-white rounded-t-xl shadow-sm overflow-hidden">
                     <button onclick="switchGuruTab('materi')" id="guru-tab-btn-materi" class="guru-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-blue-600 border-b-2 border-blue-600 transition">Buat & Kelola Materi</button>
-                    <button onclick="switchGuruTab('periksa')" id="guru-tab-btn-periksa" class="guru-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-gray-500 transition">Periksa Hasil & Monitoring Realtime</button>
+                    <button onclick="switchGuruTab('periksa')" id="guru-tab-btn-periksa" class="guru-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-gray-500 transition">Periksa Hasil Tugas</button>
                 </div>
                 <div class="bg-white p-4 sm:p-6 rounded-b-xl shadow-sm border border-t-0 border-gray-100">
-                    <div id="guru-tab-materi" class="guru-tab-content grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="space-y-4">
-                            <h3 id="form-jadwal-title" class="text-base font-bold text-gray-800">Buat Materi & Pilih Kelas</h3>
-                            <form id="form-jadwal-guru" onsubmit="handleCreateOrUpdateJadwal(event)" class="space-y-3">
-                                <input type="hidden" id="edit-jadwal-id" value="">
-                                <select id="input-jadwal-kelas" required class="w-full p-2.5 border rounded-lg text-sm"><option value="">Pilih Kelas yang Diampu...</option></select>
-                                <input type="date" id="input-jadwal-tanggal" required onchange="updateOtomatisHari()" class="w-full p-2.5 border rounded-lg text-sm">
-                                <input type="text" id="input-jadwal-hari" required readonly class="w-full p-2.5 border rounded-lg text-sm bg-gray-100 font-bold text-gray-700">
-                                <div class="grid grid-cols-2 gap-2">
-                                    <input type="time" id="input-jam-mulai" required value="08:00" onchange="updateJamSelesaiOtomatis()" class="w-full p-2 border rounded-lg text-xs">
-                                    <input type="time" id="input-jam-selesai" required value="08:40" class="w-full p-2 border rounded-lg text-xs">
-                                </div>
-                                <select id="input-jadwal-mapel" required class="w-full p-2.5 border rounded-lg text-sm bg-blue-50/50"><option value="">Loading Mata Pelajaran...</option></select>
-                                <input type="text" id="input-jadwal-topik" required placeholder="Topik / Judul Materi" class="w-full p-2.5 border rounded-lg text-sm">
+                    <div id="guru-tab-materi" class="guru-tab-content space-y-4">
+                        <h3 class="text-base font-bold text-gray-800">Form Pembuatan Materi & Upload ke Google Drive</h3>
+                        <form id="form-jadwal-guru" onsubmit="handleCreateJadwal(event)" class="space-y-3 max-w-lg">
+                            <input type="text" id="input-jadwal-kelas" required placeholder="Kelas (Contoh: X-1)" class="w-full p-2.5 border rounded-lg text-sm">
+                            <input type="text" id="input-jadwal-topik" required placeholder="Topik Materi / Judul Pelajaran" class="w-full p-2.5 border rounded-lg text-sm">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">Upload File ke Drive Materi (Otomatis ke Folder Guru):</label>
                                 <input type="file" id="input-jadwal-file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" class="w-full text-xs border p-2 rounded-lg bg-gray-50">
-                                <input type="url" id="input-jadwal-link" placeholder="Link Video / Zoom (Opsional)" class="w-full p-2.5 border rounded-lg text-sm">
-                                <button type="submit" id="btn-submit-jadwal" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">Publikasikan Materi</button>
-                            </form>
-                        </div>
-                        <div class="space-y-4">
-                            <h3 class="text-base font-bold text-gray-800">Kontrol Tugas & Absensi</h3>
-                            <div id="list-pengumpulan-guru" class="space-y-4 max-h-[500px] overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></div>
-                        </div>
+                            </div>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs">Publikasikan Materi</button>
+                        </form>
                     </div>
-                    <div id="guru-tab-periksa" class="guru-tab-content hidden space-y-6">
-                        <div id="list-hasil-jawaban-siswa" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
+                    <div id="guru-tab-periksa" class="guru-tab-content hidden space-y-4">
+                        <h3 class="text-base font-bold text-gray-800">Daftar Tugas Siswa (Dari Google Drive Folder Tugas)</h3>
+                        <div id="list-hasil-jawaban-siswa" class="space-y-3"></div>
                     </div>
                 </div>
             </div>
@@ -276,40 +146,18 @@
             <div id="content-siswa" class="role-content hidden space-y-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Siswa</h2>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
-                        <h3 class="text-base font-bold text-amber-700">📌 Materi & Tugas Belum Dikerjakan</h3>
-                        <div id="list-jadwal-belum" class="space-y-4 max-h-[600px] overflow-y-auto"></div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
+                        <h3 class="text-base font-bold text-amber-700">📌 Materi & Tugas Aktif</h3>
+                        <div id="list-jadwal-belum" class="space-y-4"></div>
                     </div>
-                    <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
-                        <h3 class="text-base font-bold text-green-700">✅ Nilai & Riwayat Pengiriman Tugas</h3>
-                        <div id="list-jadwal-sudah" class="space-y-4 max-h-[600px] overflow-y-auto"></div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
+                        <h3 class="text-base font-bold text-green-700">✅ Riwayat & Nilai Tugas</h3>
+                        <div id="list-jadwal-sudah" class="space-y-4"></div>
                     </div>
                 </div>
             </div>
 
         </main>
-    </div>
-
-    <!-- AREA CETAK KARTU SISWA -->
-    <div id="print-area" class="hidden"></div>
-
-    <!-- MODAL GANTI PASSWORD -->
-    <div id="ganti-password-modal" class="hidden fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-            <div class="bg-amber-500 text-white px-6 py-4 flex justify-between items-center">
-                <h3 class="font-bold text-sm">🔑 Ganti Password Akun</h3>
-                <button onclick="tutupModalGantiPasswordSelf()" class="text-white font-bold">✕</button>
-            </div>
-            <form onsubmit="handleGantiPasswordSelf(event)" class="p-6 space-y-4">
-                <input type="password" id="self-pass-lama" required placeholder="Password Lama" class="w-full border rounded-lg p-2.5 text-sm">
-                <input type="password" id="self-pass-baru" required placeholder="Password Baru" class="w-full border rounded-lg p-2.5 text-sm">
-                <input type="password" id="self-pass-konfirmasi" required placeholder="Konfirmasi Password Baru" class="w-full border rounded-lg p-2.5 text-sm">
-                <div class="flex justify-end gap-2">
-                    <button type="button" onclick="tutupModalGantiPasswordSelf()" class="bg-gray-400 text-white font-bold px-4 py-2 rounded-lg text-xs">Batal</button>
-                    <button type="submit" class="bg-amber-500 text-white font-bold px-4 py-2 rounded-lg text-xs">Simpan</button>
-                </div>
-            </form>
-        </div>
     </div>
 
     <!-- MODAL VIEWER FILE -->
@@ -323,61 +171,87 @@
         </div>
     </div>
 
-    <script src="compressor.js"></script>
+    <!-- ================= SKRIP LOGIK & LINK RAW JSON / GAS ================= -->
     <script>
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwZmvwKOlSSeYdzQmliyT81D5z9tRrfrfqIJKWbmeocwGfdlyJqYB14Rn6tWIsXwii3Og/exec';
+        // Link Raw Gist / GitHub JSON Databases
+        const DB_URL_USERS = 'https://gist.githubusercontent.com/by-UC/e15dd382065a96876b3041bab40bf710/raw/932f12b8760749e143d2efed7a7b012d9ae410bd/db_users.json';
+        const DB_URL_SETTINGS = 'https://gist.githubusercontent.com/by-UC/6d9a7f88b70c8122b6803be6e9ac241e/raw/b7a041c5588b93d84e17043bff1395efbbb6ee77/db_settings.json';
+        const DB_URL_JADWAL = 'https://gist.githubusercontent.com/by-UC/77f20c1cfa75110dc763ca3c8daf84a8/raw/5ed93a3c9daae329dd66036da048bd40bc54cc24/db_jadwal.json';
+        const DB_URL_ABSEN = 'https://gist.githubusercontent.com/by-UC/25cda61c00a78a5cc032b1e04bcfe912/raw/7f6df8242aec358599c4890e443c38201b5936d5/db_absen.json';
+        const DB_URL_TUGAS = 'https://gist.githubusercontent.com/by-UC/6dbb4c4b91ef7306eacd46bc4b0b0e7f/raw/9aa163fa25cb27d7b75cf43008eb0450b4cefd39/db_tugas.json';
 
-        let dbData = { kelas: [], guru: [], siswa: [], jadwal: [], absen: [], tugas: [], admin_setting: [{ key: 'admin_password', value: 'admin123' }] };
+        // URL Google Apps Script Web App untuk Upload ke Google Drive Folder (Materi / Tugas)
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzaBVstIdKYVk0pAoTb1IbAjNM2mtAXzpdQ1Kn00LZ1yKlf0W30ofZXeUgzdnI26YI7/exec';
+
         let currentUser = null;
+        let globalDbData = { users: null, settings: null, jadwal: null, absen: null, tugas: null };
 
-        async function loadDatabase() {
-            try {
-                const res = await fetch(GAS_URL);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.absen) dbData.absen = data.absen;
-                    if (data.tugas) dbData.tugas = data.tugas;
+        document.addEventListener('DOMContentLoaded', async () => {
+            const savedUser = localStorage.getItem('lms_user');
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    showDashboard();
+                } catch (e) {
+                    localStorage.removeItem('lms_user');
                 }
-            } catch (e) {}
-        }
+            }
+            await fetchAllDatabases();
+        });
 
-        async function saveDatabase() {
+        async function fetchAllDatabases() {
             try {
-                await fetch(GAS_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ absen: dbData.absen, tugas: dbData.tugas })
-                });
-            } catch (e) {}
-            renderData();
+                const [resUsers, resSettings, resJadwal, resAbsen, resTugas] = await Promise.all([
+                    fetch(DB_URL_USERS).then(r => r.json()),
+                    fetch(DB_URL_SETTINGS).then(r => r.json()),
+                    fetch(DB_URL_JADWAL).then(r => r.json()),
+                    fetch(DB_URL_ABSEN).then(r => r.json()),
+                    fetch(DB_URL_TUGAS).then(r => r.json())
+                ]);
+
+                globalDbData.users = resUsers;
+                globalDbData.settings = resSettings;
+                globalDbData.jadwal = resJadwal;
+                globalDbData.absen = resAbsen;
+                globalDbData.tugas = resTugas;
+
+                renderData();
+            } catch (err) {
+                console.error("Gagal memuat database JSON:", err);
+            }
         }
 
-        async function uploadFileToDrive(file, category, folderName) {
+        async function uploadFileToDriveViaGAS(file, folderType, subFolderNama) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
                 reader.onload = async () => {
+                    const base64String = reader.result.split(',')[1];
                     try {
-                        const res = await fetch(GAS_URL, {
+                        const response = await fetch(GAS_WEB_APP_URL, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify({ action: 'uploadFile', fileBase64: reader.result, fileName: file.name, category, folderName })
+                            body: JSON.stringify({
+                                action: 'uploadFile',
+                                base64Data: base64String,
+                                fileName: file.name,
+                                mimeType: file.type,
+                                folderType: folderType, // 'materi' atau 'tugas'
+                                subFolderNama: subFolderNama // Nama Guru (materi) atau Kelas (tugas)
+                            })
                         });
-                        const json = await res.json();
-                        if (json.status === 'success') resolve(json.file_url);
-                        else reject(new Error(json.message));
-                    } catch (err) { reject(err); }
+                        const result = await response.json();
+                        if (result.status === 'success') {
+                            resolve({ name: result.fileName, url: result.fileUrl });
+                        } else {
+                            reject(result.message);
+                        }
+                    } catch (err) {
+                        reject(err);
+                    }
                 };
-                reader.onerror = err => reject(err);
+                reader.onerror = error => reject(error);
             });
         }
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            const savedUser = localStorage.getItem('lms_user');
-            if (savedUser) { try { currentUser = JSON.parse(savedUser); } catch(e) { currentUser = null; } }
-            await loadDatabase();
-            if (currentUser) showDashboard();
-        });
 
         async function handleLogin(event) {
             event.preventDefault();
@@ -385,14 +259,27 @@
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value.trim();
 
+            await fetchAllDatabases();
+
             if (role === 'admin') {
-                if (username === 'admin' && password === 'admin123') currentUser = { role: 'admin', nama: 'Administrator' };
-                else { alert('Login Admin Salah!'); return; }
+                const adminSetting = globalDbData.settings?.admin_setting?.find(s => s.key === 'admin_password');
+                const actualPass = adminSetting ? adminSetting.value : 'admin123';
+                if (username === 'admin' && password === actualPass) {
+                    currentUser = { role: 'admin', nama: 'Administrator' };
+                } else {
+                    alert('Username atau Password Admin salah!');
+                    return;
+                }
             } else if (role === 'guru') {
-                currentUser = { role: 'guru', nama: 'Drs. Budi Santoso, M.Pd.', mapel: 'KIMIA, BIOLOGI', username: 'budisantoso', password: 'password123', id: 1 };
-            } else {
-                currentUser = { role: 'siswa', nama: 'Ahmad Fauzi', kelas: 'X-1', username: 'ahmad', password: 'password123', id: 1 };
+                const found = globalDbData.users?.guru?.find(g => g.username === username && g.password === password);
+                if (!found) { alert('Username atau Password Guru salah!'); return; }
+                currentUser = { role: 'guru', ...found };
+            } else if (role === 'siswa') {
+                const found = globalDbData.users?.siswa?.find(s => s.username === username && s.password === password);
+                if (!found) { alert('Username atau Password Siswa salah!'); return; }
+                currentUser = { role: 'siswa', ...found };
             }
+
             localStorage.setItem('lms_user', JSON.stringify(currentUser));
             showDashboard();
         }
@@ -402,107 +289,72 @@
             document.getElementById('dashboard-section').classList.remove('hidden');
             document.querySelectorAll('.role-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`content-${currentUser.role}`).classList.remove('hidden');
-            document.getElementById('user-info-text').innerText = currentUser.role === 'siswa' ? `${currentUser.nama} (${currentUser.kelas})` : `${currentUser.nama} (${currentUser.role.toUpperCase()})`;
+            document.getElementById('user-info-badge').innerText = `${currentUser.nama} (${currentUser.role.toUpperCase()})`;
             renderData();
         }
 
         function handleLogout() {
             currentUser = null;
             localStorage.removeItem('lms_user');
-            document.getElementById('dashboard-section').classList.add('hidden');
-            document.getElementById('login-section').classList.remove('hidden');
+            location.reload();
         }
 
-        function switchAdminTab(t) {
+        function switchAdminTab(tab) {
             document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`admin-tab-${t}`).classList.remove('hidden');
+            document.getElementById(`admin-tab-${tab}`).classList.remove('hidden');
         }
 
-        function switchGuruTab(t) {
+        function switchGuruTab(tab) {
             document.querySelectorAll('.guru-tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`guru-tab-${t}`).classList.remove('hidden');
+            document.getElementById(`guru-tab-${tab}`).classList.remove('hidden');
         }
 
-        async function handleCreateClass(event) {
-            event.preventDefault();
-            const nama = document.getElementById('input-nama-kelas').value.trim();
-            dbData.kelas.push({ id: Date.now(), nama });
-            alert('Kelas berhasil dibuat!');
-            renderData();
-        }
-
-        async function handleCreateOrUpdateJadwal(event) {
+        async function handleCreateJadwal(event) {
             event.preventDefault();
             const kelas = document.getElementById('input-jadwal-kelas').value;
-            const tanggal = document.getElementById('input-jadwal-tanggal').value;
-            const hari = document.getElementById('input-jadwal-hari').value;
-            const jam_mulai = document.getElementById('input-jam-mulai').value;
-            const jam_selesai = document.getElementById('input-jam-selesai').value;
-            const mapel = document.getElementById('input-jadwal-mapel').value;
             const topik = document.getElementById('input-jadwal-topik').value.trim();
             const fileInput = document.getElementById('input-jadwal-file');
 
-            let file_url = "", file_name = "";
+            let file_url = "";
+            let file_name = "";
+
             if (fileInput.files.length > 0) {
-                file_name = fileInput.files[0].name;
-                file_url = await uploadFileToDrive(fileInput.files[0], 'materi', currentUser.nama);
+                try {
+                    const uploaded = await uploadFileToDriveViaGAS(fileInput.files[0], 'materi', currentUser.nama);
+                    file_name = uploaded.name;
+                    file_url = uploaded.url;
+                } catch (e) {
+                    alert('Gagal upload ke Google Drive folder materi: ' + e);
+                    return;
+                }
             }
 
-            dbData.jadwal.push({
-                id: Date.now(), kelas, tanggal, hari, jam_mulai, jam_selesai,
-                mapel: `${mapel} - ${topik} - ${currentUser.nama}`,
-                file_name, file_url, pengampu: currentUser.nama, status_tugas: 'aktif'
-            });
-
-            alert('Materi berhasil dipublikasikan & diupload ke Google Drive!');
-            renderData();
+            alert('Materi berhasil dibuat dan file otomatis terunggah ke Google Drive!');
+            document.getElementById('form-jadwal-guru').reset();
         }
-
-        async function handleKirimTugas(event, jadwalId) {
-            event.preventDefault();
-            const teks_jawaban = document.getElementById(`jawaban-teks-${jadwalId}`).value;
-            const fileInput = document.getElementById(`jawaban-file-${jadwalId}`);
-            let file_url = null, file_name = 'Tanpa File';
-
-            if (fileInput && fileInput.files.length > 0) {
-                file_name = fileInput.files[0].name;
-                file_url = await uploadFileToDrive(fileInput.files[0], 'tugas', currentUser.kelas);
-            }
-
-            dbData.tugas.push({
-                id: Date.now(), jadwal_id: Number(jadwalId),
-                nama_siswa: currentUser.nama, kelas_siswa: currentUser.kelas,
-                teks_jawaban, file_name, file_url, waktu_kirim: new Date().toLocaleString()
-            });
-
-            await saveDatabase();
-            alert('Tugas berhasil dikirim!');
-            renderData();
-        }
-
-        function bukaViewerFile(name, url) {
-            document.getElementById('file-modal-title').innerText = name;
-            document.getElementById('file-modal-body').innerHTML = `<iframe src="${url}" class="w-full h-full rounded border-0"></iframe>`;
-            document.getElementById('file-modal').classList.remove('hidden');
-        }
-
-        function closeFileModal() { document.getElementById('file-modal').classList.add('hidden'); }
-        function bukaModalGantiPasswordSelf() { document.getElementById('ganti-password-modal').classList.remove('hidden'); }
-        function tutupModalGantiPasswordSelf() { document.getElementById('ganti-password-modal').classList.add('hidden'); }
 
         function renderData() {
             if (!currentUser) return;
-            if (currentUser.role === 'admin') {
-                document.getElementById('stat-total-kelas').innerText = (dbData.kelas || []).length;
-                document.getElementById('list-kelas-admin').innerHTML = (dbData.kelas || []).map(k => `<li class="p-2 border-b text-xs font-bold">${k.nama}</li>`).join('');
-            } else if (currentUser.role === 'guru') {
-                const selMapel = document.getElementById('input-jadwal-mapel');
-                if (selMapel) selMapel.innerHTML = '<option value="">Pilih Mapel...</option>' + (currentUser.mapel || '').split(',').map(m => `<option value="${m.trim()}">${m.trim()}</option>`).join('');
-                const selKelas = document.getElementById('input-jadwal-kelas');
-                if (selKelas) selKelas.innerHTML = '<option value="">Pilih Kelas...</option>' + (dbData.kelas || []).map(k => `<option value="${k.nama}">${k.nama}</option>`).join('');
-            } else if (currentUser.role === 'siswa') {
-                document.getElementById('list-jadwal-belum').innerHTML = (dbData.jadwal || []).filter(j => j.kelas === currentUser.kelas).map(j => `<div class="p-3 border rounded text-xs space-y-2 bg-white"><b>${j.mapel}</b><br><form onsubmit="handleKirimTugas(event, ${j.id})" class="space-y-1"><textarea id="jawaban-teks-${j.id}" class="w-full border p-1 rounded text-xs" placeholder="Ketik jawaban..." required></textarea><input type="file" id="jawaban-file-${j.id}" class="w-full text-[10px]"><button type="submit" class="bg-green-600 text-white w-full py-1 rounded font-bold">Kirim Tugas</button></form></div>`).join('');
+            if (globalDbData.settings?.kelas) {
+                document.getElementById('stat-total-kelas').innerText = globalDbData.settings.kelas.length;
             }
+            if (globalDbData.users?.guru) {
+                document.getElementById('stat-total-guru').innerText = globalDbData.users.guru.length;
+            }
+            if (globalDbData.users?.siswa) {
+                document.getElementById('stat-total-siswa').innerText = globalDbData.users.siswa.length;
+            }
+        }
+
+        function bukaViewerFile(name, url) {
+            const modal = document.getElementById('file-modal');
+            document.getElementById('file-modal-title').innerText = name;
+            document.getElementById('file-modal-body').innerHTML = `<iframe src="${url}" class="w-full h-full rounded-lg border-0"></iframe>`;
+            modal.classList.remove('hidden');
+        }
+
+        function closeFileModal() {
+            document.getElementById('file-modal').classList.add('hidden');
         }
     </script>
 </body>
