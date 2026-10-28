@@ -9,19 +9,40 @@
     <!-- SheetJS (XLSX) Library untuk Ekspor & Baca Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+    <!-- Style Khusus Cetak Kartu Siswa (Lebar 5cm, Tinggi Bebas/Auto) -->
     <style>
         @media print {
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; background: #fff; }
-            .kartu-siswa {
-                width: 5cm !important; min-width: 5cm !important; max-width: 5cm !important;
-                height: auto !important; page-break-inside: avoid; break-inside: avoid;
-                margin-bottom: 0.4cm; border: 1px solid #000 !important; padding: 0.2cm !important;
-                box-sizing: border-box !important; background-color: #ffffff !important;
-                -webkit-print-color-adjust: exact; print-color-adjust: exact;
+            body * {
+                visibility: hidden;
             }
-            .no-print { display: none !important; }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: #fff;
+            }
+            .kartu-siswa {
+                width: 5cm !important;
+                min-width: 5cm !important;
+                max-width: 5cm !important;
+                height: auto !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin-bottom: 0.4cm;
+                border: 1px solid #000 !important;
+                padding: 0.2cm !important;
+                box-sizing: border-box !important;
+                background-color: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -67,7 +88,11 @@
             </div>
             <div class="flex items-center space-x-2 sm:space-x-4">
                 <span id="user-info-badge" class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs sm:text-sm font-bold">Role</span>
-                <button id="btn-ganti-password-self" onclick="bukaModalGantiPasswordSelf()" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">🔑 Ganti Password</button>
+                
+                <button id="btn-ganti-password-self" onclick="bukaModalGantiPasswordSelf()" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">
+                    🔑 Ganti Password
+                </button>
+
                 <button onclick="handleLogout()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">Keluar</button>
             </div>
         </header>
@@ -83,6 +108,7 @@
                     <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100"><p class="text-xs font-bold text-gray-400 uppercase">Total Siswa</p><h3 id="stat-total-siswa" class="text-2xl sm:text-3xl font-black text-gray-800 mt-1">0</h3></div>
                 </div>
 
+                <!-- Tab Navigasi Admin -->
                 <div class="flex flex-wrap border-b border-gray-200 bg-white rounded-t-xl shadow-sm overflow-hidden">
                     <button onclick="switchAdminTab('kelas')" id="tab-btn-kelas" class="admin-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-blue-600 border-b-2 border-blue-600 transition">Kelas</button>
                     <button onclick="switchAdminTab('guru')" id="tab-btn-guru" class="admin-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-gray-500 transition">Guru & Mapel</button>
@@ -92,25 +118,162 @@
                 </div>
 
                 <div class="bg-white p-4 sm:p-6 rounded-b-xl shadow-sm border border-t-0 border-gray-100">
+                    <!-- Tab Kelas -->
                     <div id="admin-tab-kelas" class="admin-tab-content space-y-4">
                         <h3 class="text-base font-bold text-gray-800">Manajemen Kelas</h3>
+                        <form onsubmit="handleCreateClass(event)" class="space-y-3 max-w-lg">
+                            <input type="text" id="input-nama-kelas" required placeholder="Nama Kelas Baru (Contoh: X-1)" class="w-full p-2.5 border rounded-lg text-sm">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm">Buat Kelas</button>
+                        </form>
                         <ul id="list-kelas-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
+
+                        <!-- Modal Editor Jam KBM per Kelas -->
+                        <div id="modal-jam-kbm-kelas" class="hidden fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4">
+                            <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                                <div class="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
+                                    <h3 class="font-bold text-sm sm:text-base">Pengaturan Jam KBM & Rentang Istirahat Kelas: <span id="label-kelas-kbm" class="underline font-black"></span></h3>
+                                    <button onclick="closeModalKbm()" class="text-white hover:bg-blue-700 px-3 py-1 rounded-lg font-bold">✕</button>
+                                </div>
+                                <div class="p-4 overflow-x-auto flex-1">
+                                    <table class="w-full text-xs text-center border-collapse border border-gray-300">
+                                        <thead>
+                                            <tr class="bg-gray-100 text-gray-700 font-bold border-b border-gray-300">
+                                                <th rowspan="2" class="p-2 border border-gray-300 w-24" id="header-nama-kelas-matrix">X-1</th>
+                                                <th colspan="2" class="p-2 border border-gray-300 bg-blue-50">Rentang Jam KBM</th>
+                                                <th colspan="4" class="p-2 border border-gray-300 bg-amber-50">Rentang Jam Istirahat (Jam Isi)</th>
+                                            </tr>
+                                            <tr class="bg-gray-50 text-gray-700 font-semibold border-b border-gray-300">
+                                                <th class="p-2 border border-gray-300">Jam Mulai KBM</th>
+                                                <th class="p-2 border border-gray-300">Jam Selesai KBM</th>
+                                                <th class="p-2 border border-gray-300">Istirahat 1</th>
+                                                <th class="p-2 border border-gray-300">Istirahat 2</th>
+                                                <th class="p-2 border border-gray-300">Istirahat 3</th>
+                                                <th class="p-2 border border-gray-300">Istirahat 4</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody-matrix-kbm"></tbody>
+                                    </table>
+                                </div>
+                                <div class="bg-gray-100 px-6 py-3 flex justify-end gap-2 border-t">
+                                    <button onclick="closeModalKbm()" class="bg-gray-400 hover:bg-gray-500 text-white font-bold px-4 py-2 rounded-lg text-xs">Batal</button>
+                                    <button onclick="simpanKbmMatrixKelas()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-xs">💾 Simpan Jam KBM</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Tab Guru & Mata Pelajaran -->
                     <div id="admin-tab-guru" class="admin-tab-content hidden space-y-4">
-                        <h3 class="text-base font-bold text-gray-800">Manajemen Guru</h3>
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <h3 id="form-guru-title" class="text-base font-bold text-gray-800">Tambah Guru & Mata Pelajaran yang Diampu</h3>
+                            <button onclick="downloadTemplateGuruExcel()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1 shadow">
+                                📥 Download Template Form Guru
+                            </button>
+                        </div>
+
+                        <div class="bg-purple-50 border border-purple-200 p-4 rounded-xl space-y-3 max-w-lg">
+                            <h4 class="font-bold text-purple-900 text-xs uppercase tracking-wide">📂 Upload Excel Data Guru (.xlsx / .xls)</h4>
+                            <p class="text-[11px] text-purple-700">Unggah file Excel sesuai template untuk mendaftarkan banyak guru sekaligus.</p>
+                            <input type="file" id="input-excel-guru" accept=".xlsx, .xls" class="w-full text-xs border p-2 rounded-lg bg-white">
+                            <button onclick="handleUploadExcelGuru()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs w-full transition">Proses Upload Excel Guru</button>
+                        </div>
+
+                        <form id="form-guru-admin" onsubmit="handleCreateOrUpdateGuru(event)" class="space-y-3 max-w-lg border-t pt-3">
+                            <input type="hidden" id="edit-guru-id" value="">
+                            <input type="text" id="input-nama-guru" required placeholder="Nama & Gelar Guru" class="w-full p-2.5 border rounded-lg text-sm">
+                            <input type="text" id="input-mapel-guru" required placeholder="Mata Pelajaran (Gunakan koma jika > 1, misal: KIMIA, BIOLOGI)" class="w-full p-2.5 border rounded-lg text-sm">
+                            <input type="text" id="input-username-guru" required placeholder="Username" class="w-full p-2.5 border rounded-lg text-sm">
+                            <input type="text" id="input-password-guru" required placeholder="Password" class="w-full p-2.5 border rounded-lg text-sm">
+                            <div class="flex gap-2">
+                                <button type="submit" id="btn-submit-guru" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition">Simpan Guru</button>
+                                <button type="button" id="btn-cancel-guru" onclick="resetFormGuru()" class="hidden bg-gray-400 hover:bg-gray-500 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition">Batal</button>
+                            </div>
+                        </form>
                         <ul id="list-guru-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
                     </div>
+
+                    <!-- Tab Siswa -->
                     <div id="admin-tab-siswa" class="admin-tab-content hidden space-y-4">
-                        <h3 class="text-base font-bold text-gray-800">Manajemen Siswa</h3>
-                        <ul id="list-siswa-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <h3 class="text-base font-bold text-gray-800">Upload & Manajemen Data Siswa</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="downloadTemplateSiswaExcel()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1">📥 Download Template Form Siswa</button>
+                                <button onclick="handleDeleteAllSiswa()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition">🗑️ Hapus Semua Siswa</button>
+                            </div>
+                        </div>
+
+                        <!-- Panel Fitur Cetak Kartu Siswa per Kelas -->
+                        <div class="bg-teal-50 border border-teal-200 p-4 rounded-xl space-y-3 max-w-lg">
+                            <h4 class="font-bold text-teal-900 text-xs uppercase tracking-wide">🪪 Cetak Kartu Siswa Per Kelas (Lebar 5 cm)</h4>
+                            <p class="text-[11px] text-teal-700">Pilih kelas di bawah ini untuk mencetak kartu akun seluruh siswa dalam kelas tersebut.</p>
+                            <div class="flex gap-2">
+                                <select id="select-kelas-cetak-kartu" class="flex-1 p-2 border rounded-lg text-xs bg-white font-semibold">
+                                    <option value="">-- Pilih Kelas --</option>
+                                </select>
+                                <button onclick="cetakKartuSiswaPerKelas()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition">🖨️ Cetak Kartu</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-3 max-w-lg">
+                            <h4 class="font-bold text-blue-900 text-xs uppercase tracking-wide">📂 Upload File Excel Siswa (.xlsx / .xls)</h4>
+                            <p class="text-[11px] text-blue-700">Unggah file Excel sesuai template untuk memasukkan banyak siswa sekaligus secara otomatis.</p>
+                            <input type="file" id="input-excel-siswa" accept=".xlsx, .xls" class="w-full text-xs border p-2 rounded-lg bg-white">
+                            <button onclick="handleUploadExcelSiswa()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs w-full transition">Proses Upload File Excel</button>
+                        </div>
+
+                        <details class="text-xs text-gray-500 max-w-lg">
+                            <summary class="cursor-pointer font-bold text-blue-600">Atau gunakan Text Manual / Paste CSV</summary>
+                            <form onsubmit="handleBulkUploadSiswa(event)" class="space-y-3 mt-2">
+                                <textarea id="input-bulk-siswa" rows="3" class="w-full p-2.5 border text-xs rounded-lg font-mono" placeholder="Format: nama, kelas, username, password"></textarea>
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg text-xs">Proses Upload Teks</button>
+                            </form>
+                        </details>
+
+                        <div id="form-edit-siswa-container" class="hidden bg-amber-50 p-4 rounded-xl border border-amber-200 max-w-lg space-y-3">
+                            <h4 id="form-siswa-title" class="font-bold text-amber-800 text-sm">Edit Data Siswa</h4>
+                            <form id="form-siswa-admin" onsubmit="handleUpdateSiswa(event)" class="space-y-2">
+                                <input type="hidden" id="edit-siswa-id" value="">
+                                <input type="text" id="input-edit-nama-siswa" required placeholder="Nama Siswa" class="w-full p-2 border rounded text-xs bg-white">
+                                <input type="text" id="input-edit-kelas-siswa" required placeholder="Kelas (Contoh: X-1)" class="w-full p-2 border rounded text-xs bg-white">
+                                <input type="text" id="input-edit-username-siswa" required placeholder="Username" class="w-full p-2 border rounded text-xs bg-white">
+                                <input type="text" id="input-edit-password-siswa" required placeholder="Password" class="w-full p-2 border rounded text-xs bg-white">
+                                <div class="flex gap-2 pt-1">
+                                    <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded text-xs">Simpan Perubahan</button>
+                                    <button type="button" onclick="resetFormSiswa()" class="bg-gray-400 hover:bg-gray-500 text-white font-bold px-3 py-1.5 rounded text-xs">Batal</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="border-t pt-4 space-y-3">
+                            <input type="text" id="search-siswa-input" oninput="renderData()" placeholder="Cari siswa..." class="p-2.5 border rounded-lg text-xs w-full sm:w-72">
+                            <ul id="list-siswa-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
+                        </div>
                     </div>
+
+                    <!-- Tab Live Monitoring -->
                     <div id="admin-tab-monitoring" class="admin-tab-content hidden space-y-4">
-                        <h3 class="text-base font-bold text-gray-800">Live Monitoring</h3>
-                        <div id="live-monitoring-container" class="space-y-3"></div>
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <h3 class="text-base font-bold text-gray-800">Live Monitoring Siswa & Jam KBM (Real-Time)</h3>
+                            <button onclick="downloadRekapKbmExcelAdmin()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
+                                📊 Download Rekapitulasi KBM (Excel)
+                            </button>
+                        </div>
+                        <div id="live-monitoring-container" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
                     </div>
-                    <div id="admin-tab-setting" class="admin-tab-content hidden space-y-4">
-                        <h3 class="text-base font-bold text-gray-800">Pengaturan Admin</h3>
-                        <p class="text-xs text-gray-600">Password admin dikelola melalui `db_settings.json`.</p>
+
+                    <!-- Tab Pengaturan Admin & Backup Restore -->
+                    <div id="admin-tab-setting" class="admin-tab-content hidden space-y-6 max-w-lg">
+                        <div class="space-y-4">
+                            <h3 class="text-base font-bold text-gray-800">Pengaturan Password Admin</h3>
+                            <div class="bg-gray-50 p-3 rounded-lg border text-sm flex justify-between items-center">
+                                <span>Password Admin Saat Ini:</span>
+                                <span id="display-admin-pass" class="font-mono font-bold bg-gray-200 px-2 py-1 rounded">••••••••</span>
+                            </div>
+                            <form onsubmit="handleResetAdminPassword(event)" class="space-y-3">
+                                <input type="password" id="new-admin-password" required placeholder="Masukkan Password Baru Admin" class="w-full p-2.5 border rounded-lg text-sm">
+                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm">Reset / Ganti Password Admin</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -118,26 +281,114 @@
             <!-- DASHBOARD GURU -->
             <div id="content-guru" class="role-content hidden space-y-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Guru</h2>
+
                 <div class="flex flex-wrap border-b border-gray-200 bg-white rounded-t-xl shadow-sm overflow-hidden">
                     <button onclick="switchGuruTab('materi')" id="guru-tab-btn-materi" class="guru-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-blue-600 border-b-2 border-blue-600 transition">Buat & Kelola Materi</button>
-                    <button onclick="switchGuruTab('periksa')" id="guru-tab-btn-periksa" class="guru-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-gray-500 transition">Periksa Hasil Tugas</button>
+                    <button onclick="switchGuruTab('periksa')" id="guru-tab-btn-periksa" class="guru-tab-btn flex-auto py-3 px-4 text-center font-bold text-xs sm:text-sm text-gray-500 transition">Periksa Hasil & Monitoring Realtime</button>
                 </div>
+
                 <div class="bg-white p-4 sm:p-6 rounded-b-xl shadow-sm border border-t-0 border-gray-100">
-                    <div id="guru-tab-materi" class="guru-tab-content space-y-4">
-                        <h3 class="text-base font-bold text-gray-800">Form Pembuatan Materi & Upload ke Google Drive</h3>
-                        <form id="form-jadwal-guru" onsubmit="handleCreateJadwal(event)" class="space-y-3 max-w-lg">
-                            <input type="text" id="input-jadwal-kelas" required placeholder="Kelas (Contoh: X-1)" class="w-full p-2.5 border rounded-lg text-sm">
-                            <input type="text" id="input-jadwal-topik" required placeholder="Topik Materi / Judul Pelajaran" class="w-full p-2.5 border rounded-lg text-sm">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-600 mb-1">Upload File ke Drive Materi (Otomatis ke Folder Guru):</label>
-                                <input type="file" id="input-jadwal-file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" class="w-full text-xs border p-2 rounded-lg bg-gray-50">
-                            </div>
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs">Publikasikan Materi</button>
-                        </form>
+                    <div id="guru-tab-materi" class="guru-tab-content grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <h3 id="form-jadwal-title" class="text-base font-bold text-gray-800">Buat Materi & Pilih Kelas</h3>
+                            <form id="form-jadwal-guru" onsubmit="handleCreateOrUpdateJadwal(event)" class="space-y-3">
+                                <input type="hidden" id="edit-jadwal-id" value="">
+                                
+                                <select id="input-jadwal-kelas" required class="w-full p-2.5 border rounded-lg text-sm"><option value="">Pilih Kelas yang Diampu...</option></select>
+                                
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-600 mb-1">Tanggal Pelajaran:</label>
+                                    <input type="date" id="input-jadwal-tanggal" required onchange="updateOtomatisHari()" class="w-full p-2.5 border rounded-lg text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-600 mb-1">Hari (Otomatis):</label>
+                                    <input type="text" id="input-jadwal-hari" required readonly class="w-full p-2.5 border rounded-lg text-sm bg-gray-100 font-bold text-gray-700">
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">Jam Mulai</label>
+                                        <input type="time" id="input-jam-mulai" required value="08:00" onchange="updateJamSelesaiOtomatis()" class="w-full p-2 border rounded-lg text-xs">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">Jam Selesai</label>
+                                        <input type="time" id="input-jam-selesai" required value="08:40" class="w-full p-2 border rounded-lg text-xs">
+                                    </div>
+                                </div>
+
+                                <label class="block text-xs font-bold text-gray-600 -mb-1">Pilih Mata Pelajaran:</label>
+                                <select id="input-jadwal-mapel" required class="w-full p-2.5 border rounded-lg text-sm bg-blue-50/50">
+                                    <option value="">Loading Mata Pelajaran...</option>
+                                </select>
+                                <input type="text" id="input-jadwal-topik" required placeholder="Topik / Judul Materi (Contoh: Ikatan Kimia)" class="w-full p-2.5 border rounded-lg text-sm">
+                                
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-600 mb-1">Unggah Lampiran Modul (Gambar/PDF/Word):</label>
+                                    <p class="text-[11px] text-blue-600 font-semibold mb-1">💡 Otomatis diupload ke Google Drive Folder Materi berdasarkan Nama Guru.</p>
+                                    <input type="file" id="input-jadwal-file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" class="w-full text-xs border p-2 rounded-lg bg-gray-50">
+                                </div>
+
+                                <input type="url" id="input-jadwal-link" placeholder="Link Video / Zoom (Opsional)" class="w-full p-2.5 border rounded-lg text-sm">
+                                
+                                <div class="flex gap-2">
+                                    <button type="submit" id="btn-submit-jadwal" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">Publikasikan Materi</button>
+                                    <button type="button" id="btn-cancel-edit-jadwal" onclick="resetFormJadwal()" class="hidden bg-gray-400 hover:bg-gray-500 text-white font-bold py-2.5 px-4 rounded-lg text-sm transition">Batal</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="space-y-4">
+                            <h3 class="text-base font-bold text-gray-800">Kontrol Tugas & Absensi</h3>
+                            <div id="list-pengumpulan-guru" class="space-y-4 max-h-[500px] overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></div>
+                        </div>
                     </div>
-                    <div id="guru-tab-periksa" class="guru-tab-content hidden space-y-4">
-                        <h3 class="text-base font-bold text-gray-800">Daftar Tugas Siswa (Dari Google Drive Folder Tugas)</h3>
-                        <div id="list-hasil-jawaban-siswa" class="space-y-3"></div>
+
+                    <div id="guru-tab-periksa" class="guru-tab-content hidden space-y-6">
+                        <div class="flex flex-wrap gap-3 justify-between items-center bg-gray-50 p-4 rounded-xl border">
+                            <h3 class="text-base font-bold text-gray-800">Filter Monitoring & Periksa Tugas</h3>
+                            <div class="flex flex-wrap gap-2 w-full sm:w-auto items-center">
+                                <select id="filter-guru-jadwal" onchange="renderData()" class="p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                    <option value="">-- Semua Materi / Tugas --</option>
+                                </select>
+                                <button onclick="exportNilaiExcel()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1">📊 Ekspor Nilai (XLSX)</button>
+                            </div>
+                        </div>
+
+                        <div id="guru-realtime-stats" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center font-bold"></div>
+
+                        <div class="space-y-3">
+                            <h4 class="text-sm font-bold text-gray-700">Daftar Realtime Siswa (Status Kehadiran & Pengerjaan)</h4>
+                            <div class="overflow-x-auto border rounded-xl shadow-sm">
+                                <table class="w-full text-xs text-left text-gray-600">
+                                    <thead class="bg-gray-100 text-gray-700 uppercase font-bold text-[11px]">
+                                        <tr>
+                                            <th class="p-3">Siswa</th>
+                                            <th class="p-3">Kelas</th>
+                                            <th class="p-3">Materi / Mapel</th>
+                                            <th class="p-3">Status Kehadiran</th>
+                                            <th class="p-3">Status Tugas</th>
+                                            <th class="p-3">Nilai</th>
+                                            <th class="p-3">Waktu Akses / Kirim (WIB)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-realtime-siswa" class="divide-y bg-white"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 pt-4 border-t">
+                            <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-2">
+                                <h4 class="font-bold text-blue-900 text-xs uppercase tracking-wide">⚙️ Pengaturan Default Penilaian Guru</h4>
+                                <p class="text-[11px] text-blue-700">Atur angka nilai default dan teks feedback default Anda.</p>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                                    <input type="number" id="guru-default-nilai-setting" placeholder="Default Nilai (Misal: 80)" min="0" max="100" class="p-2 border rounded-lg text-xs bg-white font-bold text-center">
+                                    <input type="text" id="guru-default-feedback-setting" placeholder="Default Feedback..." class="p-2 border rounded-lg text-xs bg-white">
+                                    <button onclick="simpanDefaultNilaiFeedbackGuru()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition">💾 Simpan Default Nilai & Feedback</button>
+                                </div>
+                            </div>
+
+                            <h4 class="text-sm font-bold text-gray-700 pt-2">Hasil & Penilaian Tugas Siswa (Google Drive Folder Tugas)</h4>
+                            <div id="list-hasil-jawaban-siswa" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -145,14 +396,20 @@
             <!-- DASHBOARD SISWA -->
             <div id="content-siswa" class="role-content hidden space-y-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Siswa</h2>
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
-                        <h3 class="text-base font-bold text-amber-700">📌 Materi & Tugas Aktif</h3>
-                        <div id="list-jadwal-belum" class="space-y-4"></div>
+                    <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
+                        <h3 class="text-base font-bold text-amber-700 flex items-center gap-2">
+                            <span>📌</span> Materi & Tugas Belum Dikerjakan
+                        </h3>
+                        <div id="list-jadwal-belum" class="space-y-4 max-h-[600px] overflow-y-auto"></div>
                     </div>
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
-                        <h3 class="text-base font-bold text-green-700">✅ Riwayat & Nilai Tugas</h3>
-                        <div id="list-jadwal-sudah" class="space-y-4"></div>
+
+                    <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
+                        <h3 class="text-base font-bold text-green-700 flex items-center gap-2">
+                            <span>✅</span> Nilai & Riwayat Pengiriman Tugas
+                        </h3>
+                        <div id="list-jadwal-sudah" class="space-y-4 max-h-[600px] overflow-y-auto"></div>
                     </div>
                 </div>
             </div>
@@ -160,31 +417,84 @@
         </main>
     </div>
 
-    <!-- MODAL VIEWER FILE -->
+    <!-- AREA CETAK KARTU SISWA (Khusus Print) -->
+    <div id="print-area" class="hidden"></div>
+
+    <!-- MODAL GANTI PASSWORD SISWA / GURU -->
+    <div id="ganti-password-modal" class="hidden fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div class="bg-amber-500 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-sm sm:text-base">🔑 Ganti Password Akun</h3>
+                <button onclick="tutupModalGantiPasswordSelf()" class="text-white hover:bg-amber-600 px-3 py-1 rounded-lg font-bold">✕</button>
+            </div>
+            <form onsubmit="handleGantiPasswordSelf(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Password Lama</label>
+                    <input type="password" id="self-pass-lama" required class="w-full border rounded-lg p-2.5 text-sm" placeholder="••••••••">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Password Baru</label>
+                    <input type="password" id="self-pass-baru" required class="w-full border rounded-lg p-2.5 text-sm" placeholder="Masukkan password baru">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Konfirmasi Password Baru</label>
+                    <input type="password" id="self-pass-konfirmasi" required class="w-full border rounded-lg p-2.5 text-sm" placeholder="Ulangi password baru">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="tutupModalGantiPasswordSelf()" class="bg-gray-400 hover:bg-gray-500 text-white font-bold px-4 py-2 rounded-lg text-xs">Batal</button>
+                    <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 rounded-lg text-xs">Simpan Password Baru</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL PENAMPIL FILE / VIEWER -->
     <div id="file-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-60 flex justify-center items-center p-4">
         <div class="bg-white w-full max-w-4xl h-[90vh] rounded-2xl flex flex-col shadow-2xl overflow-hidden">
             <div class="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
-                <h3 id="file-modal-title" class="font-bold text-sm">Penampil Berkas</h3>
-                <button onclick="closeFileModal()" class="text-white font-bold">✕</button>
+                <h3 id="file-modal-title" class="font-bold text-sm sm:text-base truncate">Penampil Berkas</h3>
+                <button onclick="closeFileModal()" class="text-white hover:bg-blue-700 px-3 py-1 rounded-lg font-bold text-lg">✕</button>
             </div>
             <div id="file-modal-body" class="flex-1 bg-gray-100 p-2 overflow-auto flex justify-center items-center"></div>
         </div>
     </div>
 
-    <!-- ================= SKRIP LOGIK & LINK RAW JSON / GAS ================= -->
+    <!-- MODAL DETAIL SISWA -->
+    <div id="siswa-detail-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-60 flex justify-center items-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl flex flex-col shadow-2xl overflow-hidden max-h-[80vh]">
+            <div id="siswa-modal-header" class="bg-blue-600 text-white px-5 py-4 flex justify-between items-center">
+                <h3 id="siswa-modal-title" class="font-bold text-sm sm:text-base">Detail Siswa</h3>
+                <button onclick="closeSiswaModal()" class="text-white hover:bg-blue-700 px-3 py-1 rounded-lg font-bold text-lg">✕</button>
+            </div>
+            <div class="p-4 overflow-y-auto">
+                <ul id="siswa-modal-list" class="divide-y divide-gray-100"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= SCRIPT LOGIK & LINK RAW JSON / GAS (TANPA SUPABASE) ================= -->
     <script>
-        // Link Raw Gist / GitHub JSON Databases
         const DB_URL_USERS = 'https://gist.githubusercontent.com/by-UC/e15dd382065a96876b3041bab40bf710/raw/932f12b8760749e143d2efed7a7b012d9ae410bd/db_users.json';
         const DB_URL_SETTINGS = 'https://gist.githubusercontent.com/by-UC/6d9a7f88b70c8122b6803be6e9ac241e/raw/b7a041c5588b93d84e17043bff1395efbbb6ee77/db_settings.json';
         const DB_URL_JADWAL = 'https://gist.githubusercontent.com/by-UC/77f20c1cfa75110dc763ca3c8daf84a8/raw/5ed93a3c9daae329dd66036da048bd40bc54cc24/db_jadwal.json';
         const DB_URL_ABSEN = 'https://gist.githubusercontent.com/by-UC/25cda61c00a78a5cc032b1e04bcfe912/raw/7f6df8242aec358599c4890e443c38201b5936d5/db_absen.json';
         const DB_URL_TUGAS = 'https://gist.githubusercontent.com/by-UC/6dbb4c4b91ef7306eacd46bc4b0b0e7f/raw/9aa163fa25cb27d7b75cf43008eb0450b4cefd39/db_tugas.json';
 
-        // URL Google Apps Script Web App untuk Upload ke Google Drive Folder (Materi / Tugas)
-        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzaBVstIdKYVk0pAoTb1IbAjNM2mtAXzpdQ1Kn00LZ1yKlf0W30ofZXeUgzdnI26YI7/exec';
+        const GAS_WEB_APP_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
 
         let currentUser = null;
         let globalDbData = { users: null, settings: null, jadwal: null, absen: null, tugas: null };
+        let activeJadwalData = [];
+        let selectedKelasForKbm = null;
+        let activeKbmSettings = [];
+
+        const DEFAULT_KBM_MATRIX = [
+            { hari: 'Senin', jam_mulai: '07.30', jam_selesai: '15.00', istirahat_1: '09.30 - 10.30', istirahat_2: '11.50 - 12.30', istirahat_3: '', istirahat_4: '' },
+            { hari: 'Selasa', jam_mulai: '06.30', jam_selesai: '15.00', istirahat_1: '09.10 - 10.30', istirahat_2: '11.50 - 12.50', istirahat_3: '', istirahat_4: '' },
+            { hari: 'Rabu', jam_mulai: '06.30', jam_selesai: '15.00', istirahat_1: '09.10 - 10.30', istirahat_2: '11.50 - 12.50', istirahat_3: '', istirahat_4: '' },
+            { hari: 'Kamis', jam_mulai: '06.30', jam_selesai: '15.00', istirahat_1: '09.10 - 10.30', istirahat_2: '11.50 - 12.50', istirahat_3: '', istirahat_4: '' },
+            { hari: 'Jum\'at', jam_mulai: '07.30', jam_selesai: '11.20', istirahat_1: '09.30 - 10.00', istirahat_2: '', istirahat_3: '', istirahat_4: '' }
+        ];
 
         document.addEventListener('DOMContentLoaded', async () => {
             const savedUser = localStorage.getItem('lms_user');
@@ -195,6 +505,12 @@
                 } catch (e) {
                     localStorage.removeItem('lms_user');
                 }
+            }
+            const dateInput = document.getElementById('input-jadwal-tanggal');
+            if (dateInput) {
+                const today = new Date().toISOString().split('T')[0];
+                dateInput.value = today;
+                updateOtomatisHari();
             }
             await fetchAllDatabases();
         });
@@ -215,6 +531,7 @@
                 globalDbData.absen = resAbsen;
                 globalDbData.tugas = resTugas;
 
+                if (resJadwal?.jadwal) activeJadwalData = resJadwal.jadwal;
                 renderData();
             } catch (err) {
                 console.error("Gagal memuat database JSON:", err);
@@ -265,7 +582,7 @@
                 const adminSetting = globalDbData.settings?.admin_setting?.find(s => s.key === 'admin_password');
                 const actualPass = adminSetting ? adminSetting.value : 'admin123';
                 if (username === 'admin' && password === actualPass) {
-                    currentUser = { role: 'admin', nama: 'Administrator' };
+                    currentUser = { role: 'admin', nama: 'Administrator', password: actualPass };
                 } else {
                     alert('Username atau Password Admin salah!');
                     return;
@@ -289,7 +606,21 @@
             document.getElementById('dashboard-section').classList.remove('hidden');
             document.querySelectorAll('.role-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`content-${currentUser.role}`).classList.remove('hidden');
-            document.getElementById('user-info-badge').innerText = `${currentUser.nama} (${currentUser.role.toUpperCase()})`;
+            
+            const userInfoBadge = document.getElementById('user-info-badge');
+            if (currentUser.role === 'siswa') {
+                userInfoBadge.innerText = `${currentUser.nama} (${currentUser.kelas})`;
+            } else {
+                userInfoBadge.innerText = `${currentUser.nama} (${currentUser.role.toUpperCase()})`;
+            }
+
+            const btnSelfPass = document.getElementById('btn-ganti-password-self');
+            if (currentUser.role === 'guru' || currentUser.role === 'siswa') {
+                btnSelfPass.classList.remove('hidden');
+            } else {
+                btnSelfPass.classList.add('hidden');
+            }
+
             renderData();
         }
 
@@ -299,51 +630,52 @@
             location.reload();
         }
 
-        function switchAdminTab(tab) {
+        function switchAdminTab(tabName) {
             document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`admin-tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`admin-tab-${tabName}`).classList.remove('hidden');
+
+            document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+                btn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                btn.classList.add('text-gray-500');
+            });
+
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-gray-500');
+                activeBtn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            }
         }
 
-        function switchGuruTab(tab) {
+        function switchGuruTab(tabName) {
             document.querySelectorAll('.guru-tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`guru-tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`guru-tab-${tabName}`).classList.remove('hidden');
+
+            document.querySelectorAll('.guru-tab-btn').forEach(btn => {
+                btn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                btn.classList.add('text-gray-500');
+            });
+
+            const activeBtn = document.getElementById(`guru-tab-btn-${tabName}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-gray-500');
+                activeBtn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            }
         }
 
-        async function handleCreateJadwal(event) {
-            event.preventDefault();
-            const kelas = document.getElementById('input-jadwal-kelas').value;
-            const topik = document.getElementById('input-jadwal-topik').value.trim();
-            const fileInput = document.getElementById('input-jadwal-file');
-
-            let file_url = "";
-            let file_name = "";
-
-            if (fileInput.files.length > 0) {
-                try {
-                    const uploaded = await uploadFileToDriveViaGAS(fileInput.files[0], 'materi', currentUser.nama);
-                    file_name = uploaded.name;
-                    file_url = uploaded.url;
-                } catch (e) {
-                    alert('Gagal upload ke Google Drive folder materi: ' + e);
-                    return;
-                }
-            }
-
-            alert('Materi berhasil dibuat dan file otomatis terunggah ke Google Drive!');
-            document.getElementById('form-jadwal-guru').reset();
+        function updateOtomatisHari() {
+            const dateVal = document.getElementById('input-jadwal-tanggal').value;
+            if (!dateVal) return;
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const d = new Date(dateVal);
+            document.getElementById('input-jadwal-hari').value = days[d.getDay()];
         }
 
-        function renderData() {
-            if (!currentUser) return;
-            if (globalDbData.settings?.kelas) {
-                document.getElementById('stat-total-kelas').innerText = globalDbData.settings.kelas.length;
-            }
-            if (globalDbData.users?.guru) {
-                document.getElementById('stat-total-guru').innerText = globalDbData.users.guru.length;
-            }
-            if (globalDbData.users?.siswa) {
-                document.getElementById('stat-total-siswa').innerText = globalDbData.users.siswa.length;
-            }
+        function updateJamSelesaiOtomatis() {
+            const jamMulaiVal = document.getElementById('input-jam-mulai').value;
+            if (!jamMulaiVal) return;
+            const [h, m] = jamMulaiVal.split(':').map(Number);
+            let total = h * 60 + m + 40;
+            document.getElementById('input-jam-selesai').value = `${String(Math.floor(total/60)%24).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`;
         }
 
         function bukaViewerFile(name, url) {
@@ -355,6 +687,68 @@
 
         function closeFileModal() {
             document.getElementById('file-modal').classList.add('hidden');
+        }
+
+        function bukaModalGantiPasswordSelf() {
+            document.getElementById('ganti-password-modal').classList.remove('hidden');
+        }
+
+        function tutupModalGantiPasswordSelf() {
+            document.getElementById('ganti-password-modal').classList.add('hidden');
+        }
+
+        async function handleCreateOrUpdateJadwal(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('input-jadwal-file');
+            if (fileInput.files.length > 0) {
+                try {
+                    await uploadFileToDriveViaGAS(fileInput.files[0], 'materi', currentUser.nama);
+                } catch (e) {
+                    alert('Gagal upload file ke Google Drive: ' + e);
+                    return;
+                }
+            }
+            alert('Materi berhasil dipublikasikan & file terunggah otomatis ke Google Drive (Folder Materi -> Nama Guru).');
+            document.getElementById('form-jadwal-guru').reset();
+        }
+
+        async function handleKirimTugas(event, jadwalId) {
+            event.preventDefault();
+            const fileInput = document.getElementById(`jawaban-file-${jadwalId}`);
+            if (fileInput && fileInput.files.length > 0) {
+                try {
+                    await uploadFileToDriveViaGAS(fileInput.files[0], 'tugas', currentUser.kelas);
+                } catch (e) {
+                    alert('Gagal upload tugas ke Google Drive: ' + e);
+                    return;
+                }
+            }
+            alert('Tugas berhasil dikirim & file terunggah otomatis ke Google Drive (Folder Tugas -> Kelas).');
+        }
+
+        function renderData() {
+            if (!currentUser) return;
+            if (globalDbData.settings?.kelas) {
+                document.getElementById('stat-total-kelas').innerText = globalDbData.settings.kelas.length;
+                const ulKelas = document.getElementById('list-kelas-admin');
+                if (ulKelas) {
+                    ulKelas.innerHTML = globalDbData.settings.kelas.map(k => `<li class="p-2 border rounded text-xs">${k.nama}</li>`).join('');
+                }
+            }
+            if (globalDbData.users?.guru) {
+                document.getElementById('stat-total-guru').innerText = globalDbData.users.guru.length;
+                const ulGuru = document.getElementById('list-guru-admin');
+                if (ulGuru) {
+                    ulGuru.innerHTML = globalDbData.users.guru.map(g => `<li class="p-2 border rounded text-xs">${g.nama} (${g.mapel})</li>`).join('');
+                }
+            }
+            if (globalDbData.users?.siswa) {
+                document.getElementById('stat-total-siswa').innerText = globalDbData.users.siswa.length;
+                const ulSiswa = document.getElementById('list-siswa-admin');
+                if (ulSiswa) {
+                    ulSiswa.innerHTML = globalDbData.users.siswa.map(s => `<li class="p-2 border rounded text-xs">${s.nama} - Kelas ${s.kelas}</li>`).join('');
+                }
+            }
         }
     </script>
 </body>
