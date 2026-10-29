@@ -85,7 +85,7 @@
                 <p class="text-[10px] text-gray-400 hidden sm:block">Kabupaten Bogor</p>
             </div>
             <div class="flex items-center space-x-2">
-                <span id="user-info-badge" class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold truncate max-w-[120px] sm:max-w-xs">Role</span>
+                <span id="user-info-badge" class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold truncate max-w-[150px] sm:max-w-xs">Role</span>
                 <button onclick="handleLogout()" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition">Keluar</button>
             </div>
         </header>
@@ -179,7 +179,6 @@
                             </div>
                         </div>
 
-                        <!-- FITUR BARU: DOWNLOAD, UPLOAD, & HAPUS ABSEN, TUGAS, JADWAL -->
                         <div class="space-y-3 border-b pb-4">
                             <h3 class="text-sm font-bold">Backup & Restore Sistem (JSON)</h3>
                             <div class="flex gap-2">
@@ -650,7 +649,13 @@
             document.getElementById('dashboard-section').classList.remove('hidden');
             document.querySelectorAll('.role-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`content-${currentUser.role}`).classList.remove('hidden');
-            document.getElementById('user-info-badge').innerText = `${currentUser.nama}`;
+            
+            // Format Badge Nama & Kelas
+            let badgeText = currentUser.nama;
+            if (currentUser.role === 'siswa' && currentUser.kelas) {
+                badgeText += ` | ${currentUser.kelas}`;
+            }
+            document.getElementById('user-info-badge').innerText = badgeText;
             
             renderData();
             if (currentUser.role === 'guru') setupGuruDashboardData();
@@ -680,7 +685,6 @@
             document.getElementById(`guru-tab-btn-${tabName}`).classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
         }
 
-        // --- FITUR GANTI PASSWORD ---
         async function bukaModalGantiPasswordSiswa() {
             const passLama = prompt('Masukkan Password Lama Anda:');
             if (passLama === null) return;
@@ -721,7 +725,6 @@
             }
         }
 
-        // --- DASHBOARD GURU ---
         function setupGuruDashboardData() {
             setDefaultTanggalDanJam();
             const mapelSelect = document.getElementById('input-jadwal-mapel');
@@ -918,9 +921,15 @@
             const absenKelas = globalDbData.absen.filter(a => a.jadwalId == jadwalId);
             const tugasKelas = globalDbData.tugas.filter(t => t.jadwalId == jadwalId);
 
+            const totalSiswa = siswaKelas.length;
+            const hadirCount = absenKelas.filter(a => a.status === 'Hadir').length;
+            const terlambatCount = absenKelas.filter(a => a.status === 'Terlambat').length;
+            const alpaCount = Math.max(0, totalSiswa - hadirCount - terlambatCount);
+            const mengirimTugasCount = tugasKelas.length;
+
             container.innerHTML = `
                 <div class="bg-blue-50 p-3 rounded-lg text-xs font-bold text-blue-900 mb-3">
-                    Rekap Kelas ${jadwal.kelas} | Total : ${siswaKelas.length} siswa | Hadir : ${absenKelas.filter(a => a.status === 'Hadir').length} | Terlambat : ${absenKelas.filter(a => a.status === 'Terlambat').length} | Alpa : ${siswaKelas.length - absenKelas.length} | Mengirim Tugas : ${tugasKelas.length}
+                    Rekap Kelas ${jadwal.kelas} | Total : ${totalSiswa} siswa | Hadir : ${hadirCount} | Terlambat : ${terlambatCount} | Alpa : ${alpaCount} | Mengirim Tugas : ${mengirimTugasCount}
                 </div>
                 <div class="space-y-2">
                     ${siswaKelas.map(s => {
@@ -1030,7 +1039,6 @@
             XLSX.writeFile(wb, `Rekap_${jadwal.mapel}_${jadwal.kelas}_${jadwal.tanggal}.xlsx`);
         }
 
-        // --- DASHBOARD SISWA ---
         function setupSiswaDashboardData() {
             const listJadwalSiswa = document.getElementById('list-jadwal-siswa');
             const listRiwayatSiswa = document.getElementById('list-riwayat-siswa');
@@ -1071,9 +1079,10 @@
                                             ⛔ Pengiriman tugas untuk materi ini telah dihentikan oleh Guru / Kadaluarsa.
                                         </div>
                                     ` : `
-                                        <div class="flex gap-2">
-                                            <input type="file" id="input-file-tugas-${j.id}" accept=".pdf, .doc, .docx, .jpg, .jpeg, .png" class="text-xs border p-1 rounded bg-white flex-1">
-                                            <button onclick="handleKirimTugas(${j.id})" class="bg-blue-600 text-white font-bold px-3 py-1 rounded">📤 Upload Tugas</button>
+                                        <!-- Tombol & Input File Dibuat Responsif Vertikal agar pas di HP -->
+                                        <div class="space-y-2">
+                                            <input type="file" id="input-file-tugas-${j.id}" accept=".pdf, .doc, .docx, .jpg, .jpeg, .png" class="w-full text-xs border p-2 rounded bg-white">
+                                            <button onclick="handleKirimTugas(${j.id})" class="w-full bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs shadow">📤 Upload Tugas</button>
                                         </div>
                                     `}
                                     ${tugasSiswa ? `
@@ -1225,7 +1234,6 @@
             reader.readAsDataURL(compressedFile);
         }
 
-        // --- PENAMPIL FILE (VIEWER) ---
         function bukaViewer(fileUrl, judul) {
             const modal = document.getElementById('modal-viewer');
             const iframe = document.getElementById('viewer-iframe');
@@ -1263,7 +1271,6 @@
             modal.classList.add('hidden');
         }
 
-        // --- FITUR ADMIN: BACKUP, RESTORE, & HAPUS TRANSAKSI ---
         function handleBackupDatabase() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(globalDbData, null, 2));
             const downloadAnchor = document.createElement('a');
@@ -1292,7 +1299,6 @@
                         globalDbData = parsed;
                         saveCacheData();
 
-                        // Sinkronkan ke masing-masing Gist
                         await Promise.all([
                             updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users),
                             updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings),
@@ -1350,7 +1356,6 @@
             }
         }
 
-        // --- MANAJEMEN ADMIN (KELAS, GURU, SISWA) ---
         async function handleCreateClass(event) {
             event.preventDefault();
             const nama = document.getElementById('input-nama-kelas').value.trim();
@@ -1384,7 +1389,6 @@
             if (success) renderData();
         }
 
-        // --- TAMBAH / EDIT GURU (DENGAN PENANGANAN SAFE ID) ---
         async function handleCreateOrUpdateGuru(event) {
             event.preventDefault();
             const id = document.getElementById('edit-guru-id').value;
@@ -1452,7 +1456,6 @@
             XLSX.writeFile(wb, "Template_Form_Guru.xlsx");
         }
 
-        // --- UPLOAD EXCEL GURU (FLEKSIBEL KAPITAL & LOWERCASE) ---
         async function handleUploadExcelGuru() {
             const fileInput = document.getElementById('input-excel-guru');
             if (fileInput.files.length === 0) { alert('Pilih file Excel terlebih dahulu!'); return; }
@@ -1498,7 +1501,7 @@
                         
                         updateGistDataSilent(GIST_ID_USERS, 'db_users.json', globalDbData.users);
                     } else {
-                        alert('Tidak ada data valid yang ditemukan di file Excel. Pastikan header kolom sesuai ("Nama", "Mapel", "Username", "Password").');
+                        alert('Tidak ada data valid yang ditemukan di file Excel.');
                     }
                 } catch (err) {
                     hideLoading();
@@ -1508,7 +1511,6 @@
             reader.readAsArrayBuffer(fileInput.files[0]);
         }
 
-        // --- TAMBAH / EDIT SISWA (DENGAN PENANGANAN SAFE ID) ---
         async function handleCreateOrUpdateSiswa(event) {
             event.preventDefault();
             const id = document.getElementById('edit-siswa-id').value;
@@ -1584,7 +1586,6 @@
             XLSX.writeFile(wb, "Template_Form_Siswa.xlsx");
         }
 
-        // --- UPLOAD EXCEL SISWA (FLEKSIBEL KAPITAL & LOWERCASE) ---
         async function handleUploadExcelSiswa() {
             const fileInput = document.getElementById('input-excel-siswa');
             if (fileInput.files.length === 0) { alert('Pilih file Excel terlebih dahulu!'); return; }
@@ -1630,7 +1631,7 @@
                         
                         updateGistDataSilent(GIST_ID_USERS, 'db_users.json', globalDbData.users);
                     } else {
-                        alert('Tidak ada data valid yang ditemukan di file Excel. Pastikan header kolom sesuai ("Nama", "Kelas", "Username", "Password").');
+                        alert('Tidak ada data valid yang ditemukan di file Excel.');
                     }
                 } catch (err) {
                     hideLoading();
@@ -1663,7 +1664,6 @@
             renderData();
         }
 
-        // Fungsi bantu sinkronisasi senyap di latar belakang
         function updateGistDataSilent(gistId, filename, dataObj) {
             fetch(`https://api.github.com/gists/${gistId}`, {
                 method: 'PATCH',
