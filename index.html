@@ -328,7 +328,7 @@
         const DB_URL_TUGAS = `https://gist.githubusercontent.com/by-UC/${GIST_ID_TUGAS}/raw/db_tugas.json`;
 
         let currentUser = null;
-        let globalDbData = { users: null, settings: null, jadwal: null, absen: null, tugas: null };
+        let globalDbData = { users: { guru: [], siswa: [] }, settings: { kelas: [], admin_setting: [] }, jadwal: [], absen: [], tugas: [] };
 
         document.addEventListener('DOMContentLoaded', async () => {
             const savedUser = localStorage.getItem('lms_user');
@@ -344,18 +344,26 @@
         async function fetchAllDatabases() {
             try {
                 const [resUsers, resSettings, resJadwal, resAbsen, resTugas] = await Promise.all([
-                    fetch(DB_URL_USERS + '?t=' + Date.now()).then(r => r.json()),
-                    fetch(DB_URL_SETTINGS + '?t=' + Date.now()).then(r => r.json()),
-                    fetch(DB_URL_JADWAL + '?t=' + Date.now()).then(r => r.json()),
-                    fetch(DB_URL_ABSEN + '?t=' + Date.now()).then(r => r.json()),
-                    fetch(DB_URL_TUGAS + '?t=' + Date.now()).then(r => r.json())
+                    fetch(DB_URL_USERS + '?t=' + Date.now()).then(r => r.json()).catch(() => ({ guru: [], siswa: [] })),
+                    fetch(DB_URL_SETTINGS + '?t=' + Date.now()).then(r => r.json()).catch(() => ({ kelas: [], admin_setting: [] })),
+                    fetch(DB_URL_JADWAL + '?t=' + Date.now()).then(r => r.json()).catch(() => []),
+                    fetch(DB_URL_ABSEN + '?t=' + Date.now()).then(r => r.json()).catch(() => []),
+                    fetch(DB_URL_TUGAS + '?t=' + Date.now()).then(r => r.json()).catch(() => [])
                 ]);
-                globalDbData.users = resUsers;
-                globalDbData.settings = resSettings;
-                globalDbData.jadwal = resJadwal;
-                globalDbData.absen = resAbsen;
-                globalDbData.tugas = resTugas;
+                globalDbData.users = (resUsers && typeof resUsers === 'object') ? resUsers : { guru: [], siswa: [] };
+                if (!globalDbData.users.guru) globalDbData.users.guru = [];
+                if (!globalDbData.users.siswa) globalDbData.users.siswa = [];
+
+                globalDbData.settings = (resSettings && typeof resSettings === 'object') ? resSettings : { kelas: [], admin_setting: [] };
+                if (!globalDbData.settings.kelas) globalDbData.settings.kelas = [];
+                if (!globalDbData.settings.admin_setting) globalDbData.settings.admin_setting = [];
+
+                globalDbData.jadwal = Array.isArray(resJadwal) ? resJadwal : [];
+                globalDbData.absen = Array.isArray(resAbsen) ? resAbsen : [];
+                globalDbData.tugas = Array.isArray(resTugas) ? resTugas : [];
+
                 renderData();
+                if (currentUser && currentUser.role === 'guru') setupDropdownMapelGuru();
             } catch (err) { console.error("Gagal memuat database:", err); }
         }
 
@@ -382,10 +390,9 @@
             }
         }
 
-        // --- FUNGSI AUTO INCREMENT ID (1, 2, 3, dst) ---
         function getNextAutoId(list) {
             if (!list || list.length === 0) return 1;
-            const validIds = list.map(item => Number(item.id)).filter(id => !isNaN(id) && id < 1000000);
+            const validIds = list.map(item => Number(item.id)).filter(id => !isNaN(id));
             return validIds.length > 0 ? Math.max(...validIds) + 1 : 1;
         }
 
@@ -425,7 +432,12 @@
             
             const userInfoBadge = document.getElementById('user-info-badge');
             userInfoBadge.innerText = currentUser.role === 'siswa' ? `${currentUser.nama} (${currentUser.kelas})` : `${currentUser.nama} (${currentUser.role.toUpperCase()})`;
+            
+            const btnSelfPass = document.getElementById('btn-ganti-password-self');
+            if (currentUser.role === 'guru' || currentUser.role === 'siswa') btnSelfPass.classList.remove('hidden');
+            
             renderData();
+            if (currentUser.role === 'guru') setupDropdownMapelGuru();
         }
 
         function handleLogout() {
@@ -484,6 +496,7 @@
                 return;
             }
 
+            if (!globalDbData.users) globalDbData.users = { guru: [], siswa: [] };
             if (!globalDbData.users.guru) globalDbData.users.guru = [];
 
             if (id) {
@@ -547,18 +560,27 @@
             reader.onload = async function(e) {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const firstSheetName = workbook.SheetNames[0];
+                const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: "" });
+                
+                if (!globalDbData.users) globalDbData.users = { guru: [], siswa: [] };
                 if (!globalDbData.users.guru) globalDbData.users.guru = [];
                 
                 let currentNextId = getNextAutoId(globalDbData.users.guru);
-                rows.forEach(r => {
-                    if (r.nama && r.username) {
+                rawRows.forEach(r => {
+                    // Deteksi key secara fleksibel (huruf besar/kecil)
+                    const nama = r.nama || r.NAMA || r.Nama || '';
+                    const mapel = r.mapel || r.MAPEL || r.Mapel || '';
+                    const username = r.username || r.USERNAME || r.Username || '';
+                    const password = r.password || r.PASSWORD || r.Password || '123';
+
+                    if (nama && username) {
                         globalDbData.users.guru.push({
                             id: currentNextId++,
-                            nama: String(r.nama).trim(),
-                            mapel: String(r.mapel || '').trim(),
-                            username: String(r.username).trim(),
-                            password: String(r.password || '123').trim()
+                            nama: String(nama).trim(),
+                            mapel: String(mapel).trim(),
+                            username: String(username).trim(),
+                            password: String(password).trim()
                         });
                     }
                 });
@@ -582,6 +604,7 @@
                 return;
             }
 
+            if (!globalDbData.users) globalDbData.users = { guru: [], siswa: [] };
             if (!globalDbData.users.siswa) globalDbData.users.siswa = [];
 
             if (id) {
@@ -643,18 +666,26 @@
             reader.onload = async function(e) {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const firstSheetName = workbook.SheetNames[0];
+                const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: "" });
+                
+                if (!globalDbData.users) globalDbData.users = { guru: [], siswa: [] };
                 if (!globalDbData.users.siswa) globalDbData.users.siswa = [];
                 
                 let currentNextId = getNextAutoId(globalDbData.users.siswa);
-                rows.forEach(r => {
-                    if (r.nama && r.username) {
+                rawRows.forEach(r => {
+                    const nama = r.nama || r.NAMA || r.Nama || '';
+                    const kelas = r.kelas || r.KELAS || r.Kelas || '';
+                    const username = r.username || r.USERNAME || r.Username || '';
+                    const password = r.password || r.PASSWORD || r.Password || '123';
+
+                    if (nama && username) {
                         globalDbData.users.siswa.push({
                             id: currentNextId++,
-                            nama: String(r.nama).trim(),
-                            kelas: String(r.kelas || '').trim(),
-                            username: String(r.username).trim(),
-                            password: String(r.password || '123').trim()
+                            nama: String(nama).trim(),
+                            kelas: String(kelas).trim(),
+                            username: String(username).trim(),
+                            password: String(password).trim()
                         });
                     }
                 });
@@ -669,6 +700,7 @@
             const text = document.getElementById('input-bulk-siswa').value.trim();
             if (!text) return;
             const lines = text.split('\n');
+            if (!globalDbData.users) globalDbData.users = { guru: [], siswa: [] };
             if (!globalDbData.users.siswa) globalDbData.users.siswa = [];
             
             let currentNextId = getNextAutoId(globalDbData.users.siswa);
@@ -686,6 +718,55 @@
             });
             const success = await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
             if (success) { alert('Upload teks berhasil!'); document.getElementById('input-bulk-siswa').value = ''; }
+        }
+
+        // --- FITUR GURU: BUAT MATERI / JADWAL ---
+        function setupDropdownMapelGuru() {
+            const mapelSelect = document.getElementById('input-jadwal-mapel');
+            if (!mapelSelect || !currentUser || currentUser.role !== 'guru') return;
+            const rawMapel = currentUser.mapel || '';
+            const listMapel = rawMapel.split(',').map(m => m.trim()).filter(m => m);
+            mapelSelect.innerHTML = '<option value="">Pilih Mata Pelajaran...</option>' + listMapel.map(m => `<option value="${m}">${m}</option>`).join('');
+        }
+
+        async function handleCreateOrUpdateJadwal(event) {
+            event.preventDefault();
+            const kelas = document.getElementById('input-jadwal-kelas').value;
+            const tanggal = document.getElementById('input-jadwal-tanggal').value;
+            const hari = document.getElementById('input-jadwal-hari').value;
+            const jamMulai = document.getElementById('input-jam-mulai').value;
+            const jamSelesai = document.getElementById('input-jam-selesai').value;
+            const mapel = document.getElementById('input-jadwal-mapel').value;
+            const topik = document.getElementById('input-jadwal-topik').value.trim();
+            const fileInput = document.getElementById('input-jadwal-file');
+
+            let fileUrl = '';
+            if (fileInput.files.length > 0) {
+                fileUrl = fileInput.files[0].name; // Placeholder nama file jika lokal
+            }
+
+            if (!globalDbData.jadwal) globalDbData.jadwal = [];
+            const nextId = getNextAutoId(globalDbData.jadwal);
+
+            globalDbData.jadwal.push({
+                id: nextId,
+                guruId: currentUser.id,
+                namaGuru: currentUser.nama,
+                kelas,
+                tanggal,
+                hari,
+                jamMulai,
+                jamSelesai,
+                mapel,
+                topik,
+                fileUrl
+            });
+
+            const success = await updateGistData(GIST_ID_JADWAL, 'db_jadwal.json', globalDbData.jadwal);
+            if (success) {
+                alert('Materi berhasil dipublikasikan!');
+                document.getElementById('form-jadwal-guru').reset();
+            }
         }
 
         // --- CETAK KARTU SISWA ---
@@ -731,7 +812,7 @@
                 document.getElementById('stat-total-kelas').innerText = globalDbData.settings.kelas.length;
                 document.getElementById('list-kelas-admin').innerHTML = globalDbData.settings.kelas.map(k => `
                     <li class="p-2 bg-white border rounded text-xs flex justify-between items-center shadow-sm">
-                        <span class="font-bold text-gray-800">ID: ${k.id} - ${k.nama}</span>
+                        <span class="font-bold text-gray-800">${k.nama}</span>
                         <button onclick="handleDeleteKelas(${k.id})" class="bg-red-500 text-white px-2 py-1 rounded font-bold">Hapus</button>
                     </li>`).join('');
                 document.getElementById('input-jadwal-kelas').innerHTML = '<option value="">Pilih Kelas...</option>' + globalDbData.settings.kelas.map(k => `<option value="${k.nama}">${k.nama}</option>`).join('');
@@ -747,7 +828,7 @@
                 document.getElementById('list-guru-admin').innerHTML = globalDbData.users.guru.map(g => `
                     <li class="p-3 bg-white border rounded-lg text-xs flex justify-between items-center shadow-sm">
                         <div>
-                            <span class="font-bold text-gray-800 text-sm">#${g.id} ${g.nama}</span> (${g.mapel})
+                            <span class="font-bold text-gray-800 text-sm">${g.nama}</span> (${g.mapel})
                             <div class="text-gray-500 mt-1 font-mono">User: <b>${g.username}</b> | Pass: <b>${g.password}</b></div>
                         </div>
                         <div class="space-x-1">
@@ -763,7 +844,7 @@
                 document.getElementById('list-siswa-admin').innerHTML = globalDbData.users.siswa.filter(s => s.nama.toLowerCase().includes(keyword)).map(s => `
                     <li class="p-3 bg-white border rounded-lg text-xs flex justify-between items-center shadow-sm">
                         <div>
-                            <span class="font-bold text-gray-800 text-sm">#${s.id} ${s.nama}</span> <span class="bg-blue-100 px-2 py-0.5 rounded">${s.kelas}</span>
+                            <span class="font-bold text-gray-800 text-sm">${s.nama}</span> <span class="bg-blue-100 px-2 py-0.5 rounded">${s.kelas}</span>
                             <div class="text-gray-500 mt-1 font-mono">User: <b>${s.username}</b> | Pass: <b>${s.password}</b></div>
                         </div>
                         <div class="space-x-1">
