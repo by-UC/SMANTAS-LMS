@@ -138,7 +138,13 @@
                     </div>
                     <!-- Tab Siswa -->
                     <div id="admin-tab-siswa" class="admin-tab-content hidden space-y-4">
-                        <div class="flex justify-between items-center"><h3 class="text-sm font-bold">Manajemen Siswa</h3><button onclick="downloadTemplateSiswaExcel()" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded">📥 Template</button></div>
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                            <h3 class="text-sm font-bold">Manajemen Siswa</h3>
+                            <div class="flex gap-2">
+                                <button onclick="handleDeleteAllSiswa()" class="bg-red-600 text-white text-xs px-3 py-1.5 rounded font-bold">Hapus Semua</button>
+                                <button onclick="downloadTemplateSiswaExcel()" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded">📥 Template</button>
+                            </div>
+                        </div>
                         <div class="bg-blue-50 p-3 rounded-xl space-y-2 max-w-lg">
                             <h4 class="font-bold text-blue-900 text-xs">📂 Upload Excel Siswa</h4>
                             <input type="file" id="input-excel-siswa" accept=".xlsx, .xls" class="w-full text-xs border p-2 bg-white rounded">
@@ -150,8 +156,14 @@
                             <input type="text" id="input-kelas-siswa" required placeholder="Kelas (X-1)" class="w-full p-2 border rounded text-xs bg-white">
                             <input type="text" id="input-username-siswa" required placeholder="Username" class="w-full p-2 border rounded text-xs bg-white">
                             <input type="text" id="input-password-siswa" required placeholder="Password" class="w-full p-2 border rounded text-xs bg-white">
-                            <button type="submit" id="btn-submit-siswa" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded text-xs">Simpan Siswa</button>
+                            <div class="flex gap-2">
+                                <button type="submit" id="btn-submit-siswa" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded text-xs">Simpan Siswa</button>
+                                <button type="button" id="btn-cancel-siswa" onclick="resetFormSiswa()" class="hidden bg-gray-400 text-white font-bold px-3 py-1.5 rounded text-xs">Batal</button>
+                            </div>
                         </form>
+                        <div class="max-w-lg">
+                            <input type="text" id="search-siswa-input" oninput="renderData()" placeholder="🔍 Cari berdasarkan nama siswa..." class="w-full p-2.5 border rounded-lg text-sm bg-white">
+                        </div>
                         <ul id="list-siswa-admin" class="space-y-2 max-h-60 overflow-y-auto text-sm border p-3 rounded-lg bg-gray-50"></ul>
                     </div>
                     <!-- Tab Pengaturan -->
@@ -165,6 +177,10 @@
                         </div>
                         <div class="space-y-3">
                             <h3 class="text-sm font-bold">Pengaturan Password Admin</h3>
+                            <div class="p-3 bg-gray-50 border rounded-lg text-xs space-y-1">
+                                <span class="text-gray-500">Password Admin Saat Ini:</span>
+                                <div id="display-current-admin-pass" class="font-mono font-bold text-gray-800 text-sm">admin123</div>
+                            </div>
                             <form onsubmit="handleResetAdminPassword(event)" class="space-y-3">
                                 <input type="password" id="new-admin-password" required placeholder="Password Baru Admin" class="w-full p-2.5 border rounded text-sm">
                                 <button type="submit" class="bg-blue-600 text-white font-bold px-4 py-2 rounded text-sm">Ganti Password Admin</button>
@@ -176,7 +192,11 @@
 
             <!-- DASHBOARD GURU -->
             <div id="content-guru" class="role-content hidden space-y-6">
-                <h2 class="text-lg sm:text-2xl font-bold text-gray-800">Dashboard Guru</h2>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h2 class="text-lg sm:text-2xl font-bold text-gray-800">Dashboard Guru</h2>
+                    <!-- Tombol Ganti Password Guru -->
+                    <button onclick="bukaModalGantiPasswordGuru()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-2 rounded-lg shadow">🔑 Ganti Password</button>
+                </div>
                 <div class="flex overflow-x-auto border-b border-gray-200 bg-white rounded-t-xl shadow-sm no-scrollbar">
                     <button onclick="switchGuruTab('materi')" id="guru-tab-btn-materi" class="guru-tab-btn py-3 px-4 whitespace-nowrap font-bold text-xs sm:text-sm text-blue-600 border-b-2 border-blue-600 transition">Buat Materi & Link Zoom/YouTube</button>
                     <button onclick="switchGuruTab('periksa')" id="guru-tab-btn-periksa" class="guru-tab-btn py-3 px-4 whitespace-nowrap font-bold text-xs sm:text-sm text-gray-500 transition">Absensi, Nilai & Remedial</button>
@@ -263,7 +283,11 @@
 
             <!-- DASHBOARD SISWA -->
             <div id="content-siswa" class="role-content hidden space-y-6">
-                <h2 class="text-lg sm:text-2xl font-bold text-gray-800">Dashboard Siswa</h2>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h2 class="text-lg sm:text-2xl font-bold text-gray-800">Dashboard Siswa</h2>
+                    <!-- Tombol Ganti Password Siswa -->
+                    <button onclick="bukaModalGantiPasswordSiswa()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-2 rounded-lg shadow">🔑 Ganti Password</button>
+                </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div class="bg-white p-4 sm:p-5 rounded-xl shadow-sm border space-y-4">
                         <h3 class="text-sm font-bold text-amber-700">📌 Materi & Tugas Aktif</h3>
@@ -459,7 +483,7 @@
             return validIds.length > 0 ? Math.max(...validIds) + 1 : 1;
         }
 
-        // --- KOMPRESSOR GAMBAR (compressor.js logic) ---
+        // --- KOMPRESSOR GAMBAR ---
         async function compressImageFile(file, maxWidth = 800, initialQuality = 0.7) {
             return new Promise((resolve) => {
                 if (!file.type.startsWith('image/')) {
@@ -488,7 +512,7 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
 
-                        const targetBytes = 200 * 1024; // Target max 200 KB
+                        const targetBytes = 200 * 1024;
                         let quality = initialQuality;
 
                         const attemptCompression = (currentQuality) => {
@@ -508,8 +532,6 @@
                                         type: 'image/jpeg',
                                         lastModified: Date.now()
                                     });
-
-                                    console.log(`[Kompresi] Ukuran Asli: ${(file.size / 1024).toFixed(1)} KB -> Hasil: ${(compressedFile.size / 1024).toFixed(1)} KB`);
                                     resolve(compressedFile);
                                 },
                                 'image/jpeg',
@@ -534,13 +556,12 @@
                 try {
                     file = await compressImageFile(file, 800, 0.7);
                 } catch (e) {
-                    console.warn('Gagal kompres gambar, menggunakan file asli:', e);
+                    console.warn('Gagal kompres gambar:', e);
                 }
             }
             return file;
         }
 
-        // --- OTOMATIS HENTIKAN KADALUARSA (Lewat hari / 12 jam setelah dilanjutkan) ---
         async function checkOtomatisHentikanKadaluarsa() {
             if (!globalDbData.jadwal || globalDbData.jadwal.length === 0) return;
             const now = new Date();
@@ -548,7 +569,6 @@
 
             globalDbData.jadwal.forEach(j => {
                 if (!j.hentikanGlobal) {
-                    // Cek 1: Apakah sudah lewat hari dari tanggal materi
                     const tanggalMateri = new Date(j.tanggal);
                     tanggalMateri.setHours(23, 59, 59, 999);
                     
@@ -557,7 +577,6 @@
                         adaPerubahan = true;
                     }
 
-                    // Cek 2: Apakah sudah lewat 12 jam sejak waktu terakhir dilanjutkan / dibuat
                     if (j.waktuDilanjutkan) {
                         const waktuLanjut = new Date(j.waktuDilanjutkan);
                         const selisihJam = (now - waktuLanjut) / (1000 * 60 * 60);
@@ -639,6 +658,47 @@
             document.getElementById(`guru-tab-btn-${tabName}`).classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
         }
 
+        // --- FITUR GANTI PASSWORD (SISWA & GURU) ---
+        async function bukaModalGantiPasswordSiswa() {
+            const passLama = prompt('Masukkan Password Lama Anda:');
+            if (passLama === null) return;
+            if (passLama !== currentUser.password) {
+                alert('Password lama salah!');
+                return;
+            }
+            const passBaru = prompt('Masukkan Password Baru:');
+            if (!passBaru) return;
+
+            const idx = globalDbData.users.siswa.findIndex(s => s.id == currentUser.id);
+            if (idx !== -1) {
+                globalDbData.users.siswa[idx].password = passBaru;
+                currentUser.password = passBaru;
+                localStorage.setItem('lms_user', JSON.stringify(currentUser));
+                const success = await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
+                if (success) alert('Password siswa berhasil diubah!');
+            }
+        }
+
+        async function bukaModalGantiPasswordGuru() {
+            const passLama = prompt('Masukkan Password Lama Anda:');
+            if (passLama === null) return;
+            if (passLama !== currentUser.password) {
+                alert('Password lama salah!');
+                return;
+            }
+            const passBaru = prompt('Masukkan Password Baru:');
+            if (!passBaru) return;
+
+            const idx = globalDbData.users.guru.findIndex(g => g.id == currentUser.id);
+            if (idx !== -1) {
+                globalDbData.users.guru[idx].password = passBaru;
+                currentUser.password = passBaru;
+                localStorage.setItem('lms_user', JSON.stringify(currentUser));
+                const success = await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
+                if (success) alert('Password guru berhasil diubah!');
+            }
+        }
+
         // --- DASHBOARD GURU ---
         function setupGuruDashboardData() {
             setDefaultTanggalDanJam();
@@ -654,7 +714,6 @@
             if (listMateri && currentUser && currentUser.role === 'guru') {
                 let myJadwal = globalDbData.jadwal.filter(j => j.guruId == currentUser.id);
 
-                // Urutkan berdasarkan tanggal & jam terbaru di paling atas
                 myJadwal.sort((a, b) => {
                     const dtA = new Date(`${a.tanggal}T${a.jamMulai || '00:00'}`);
                     const dtB = new Date(`${b.tanggal}T${b.jamMulai || '00:00'}`);
@@ -670,7 +729,7 @@
                             ${j.fileUrl ? `<div>File: <button onclick="bukaViewer('${j.fileUrl}', '${j.topik}')" class="text-blue-600 underline font-bold">📄 Baca/Lihat Materi</button></div>` : ''}
                             <div class="pt-2 flex gap-1">
                                 <button onclick="prepareEditJadwal(${j.id})" class="bg-amber-500 text-white px-2.5 py-1 rounded font-bold">Edit</button>
-                                <button onclick="handleDeleteJadwal(${j.id})" class="bg-red-500 text-white px-2.5 py-1 rounded font-bold">Hapus</button>
+                                <button onclick="handleDeleteJadwal(${j.id}, '${j.topik}')" class="bg-red-500 text-white px-2.5 py-1 rounded font-bold">Hapus</button>
                                 <button onclick="toggleHentikanJadwalGlobal(${j.id})" class="${j.hentikanGlobal ? 'bg-red-600' : 'bg-gray-600'} text-white px-2.5 py-1 rounded font-bold">${j.hentikanGlobal ? 'Lanjutkan' : 'Hentikan'}</button>
                             </div>
                         </div>
@@ -698,7 +757,6 @@
             const link = document.getElementById('input-jadwal-link').value.trim();
             const fileInput = document.getElementById('input-file-materi');
 
-            // Cek Bentrok
             const bentrokJadwal = globalDbData.jadwal.find(j => {
                 if (id && j.id == id) return false;
                 if (j.kelas !== kelas || j.tanggal !== tanggal) return false;
@@ -706,10 +764,7 @@
             });
 
             if (bentrokJadwal) {
-                const iconSvg = `<svg class="w-5 h-5 inline-block mr-1 align-text-bottom" viewBox="0 0 24 24" fill="yellow" stroke="black" stroke-width="2"><path d="M12 2L1 21h22L12 2zm0 3.5l8.5 14.5H3.5L12 5.5z"/><circle cx="12" cy="16" r="1.2" fill="black"/><path d="M12 9v4" stroke="black" stroke-width="2" stroke-linecap="round"/></svg>`;
-                const warningMsg = document.createElement('div');
-                warningMsg.innerHTML = `${iconSvg} <strong class="text-red-600 font-bold">Jam Bentrok</strong> Jam Sudah Terisi ${bentrokJadwal.namaGuru}-${bentrokJadwal.mapel}`;
-                alert(warningMsg.innerText);
+                alert(`⚠️ Jam Bentrok! Jam sudah terisi oleh ${bentrokJadwal.namaGuru} - ${bentrokJadwal.mapel}`);
                 return;
             }
 
@@ -776,12 +831,12 @@
             if (!j) return;
             j.hentikanGlobal = !j.hentikanGlobal;
             if (!j.hentikanGlobal) {
-                j.waktuDilanjutkan = new Date().toISOString(); // Catat waktu saat ditekan lanjutkan
+                j.waktuDilanjutkan = new Date().toISOString();
             }
 
             const success = await updateGistData(GIST_ID_JADWAL, 'db_jadwal.json', globalDbData.jadwal);
             if (success) {
-                alert(j.hentikanGlobal ? 'Pengiriman tugas untuk materi ini telah DIHENTIKAN bagi seluruh siswa.' : 'Pengiriman tugas DILANJUTKAN (berlaku 12 jam atau hingga lewat hari).');
+                alert(j.hentikanGlobal ? 'Pengiriman tugas telah DIHENTIKAN.' : 'Pengiriman tugas DILANJUTKAN.');
                 setupGuruDashboardData();
             }
         }
@@ -822,8 +877,8 @@
             setDefaultTanggalDanJam();
         }
 
-        async function handleDeleteJadwal(id) {
-            if (!confirm('Yakin ingin menghapus materi ini?')) return;
+        async function handleDeleteJadwal(id, topik) {
+            if (!confirm(`Apakah anda yakin akan menghapus materi "${topik}" ?`)) return;
             globalDbData.jadwal = globalDbData.jadwal.filter(j => j.id != id);
             await updateGistData(GIST_ID_JADWAL, 'db_jadwal.json', globalDbData.jadwal);
             setupGuruDashboardData();
@@ -961,7 +1016,6 @@
 
             let jadwalKelas = globalDbData.jadwal.filter(j => j.kelas === currentUser.kelas);
 
-            // Urutkan berdasarkan tanggal & jam terbaru di paling atas
             jadwalKelas.sort((a, b) => {
                 const dateA = new Date(`${a.tanggal}T${a.jamMulai || '00:00'}`);
                 const dateB = new Date(`${b.tanggal}T${b.jamMulai || '00:00'}`);
@@ -970,7 +1024,6 @@
 
             listJadwalSiswa.innerHTML = jadwalKelas.length === 0 ? '<p class="text-xs text-gray-400">Belum ada materi atau tugas untuk kelas Anda.</p>' :
                 jadwalKelas.map(j => {
-                    const absenSiswa = globalDbData.absen.find(a => a.jadwalId == j.id && a.siswaId == currentUser.id);
                     const tugasSiswa = globalDbData.tugas.find(t => t.jadwalId == j.id && t.siswaId == currentUser.id);
                     
                     return `
@@ -984,10 +1037,8 @@
                             </div>
                             <p class="text-gray-600">Pengajar: <b>${j.namaGuru}</b> (${j.hari}, ${j.jamMulai} - ${j.jamSelesai})</p>
                             
-                            <!-- Link Zoom / YouTube -->
                             ${j.link ? `<div><a href="${j.link}" target="_blank" class="inline-block bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg shadow">🔗 Buka Link Zoom / YouTube</a></div>` : ''}
                             
-                            <!-- Tombol Penampil File Materi -->
                             ${j.fileUrl ? `<div><button onclick="bukaMateriSiswa(${j.id}, '${j.fileUrl}', '${j.topik}')" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg shadow">📄 Baca/Lihat Materi (PDF/Word/Gambar)</button></div>` : `<div><button onclick="catatAksesMateriTanpaFile(${j.id})" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg shadow">👁️ Akses Materi</button></div>`}
 
                             <div class="pt-2 border-t flex flex-wrap gap-2 items-center">
@@ -995,7 +1046,7 @@
                                     <label class="font-bold text-gray-700">Kirim Tugas (PDF, Word, Gambar - Otomatis Kompres):</label>
                                     ${j.hentikanGlobal ? `
                                         <div class="p-2 bg-red-50 border border-red-200 text-red-600 font-bold rounded">
-                                            ⛔ Pengiriman tugas untuk materi ini telah dihentikan oleh Guru / Kadaluarsa (Lewat 12 Jam / Hari).
+                                            ⛔ Pengiriman tugas untuk materi ini telah dihentikan oleh Guru / Kadaluarsa.
                                         </div>
                                     ` : `
                                         <div class="flex gap-2">
@@ -1202,8 +1253,14 @@
         }
 
         async function handleDeleteAllKelas() {
-            if (!confirm('Hapus semua kelas?')) return;
+            if (!confirm('Apakah anda yakin akan menghapus semua kelas ?')) return;
             globalDbData.settings.kelas = [];
+            await updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings);
+        }
+
+        async function handleDeleteKelas(id, namaKelas) {
+            if (!confirm(`Apakah anda yakin akan menghapus kelas "${namaKelas}" ?`)) return;
+            globalDbData.settings.kelas = globalDbData.settings.kelas.filter(k => k.id != id);
             await updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings);
         }
 
@@ -1234,11 +1291,19 @@
             document.getElementById('input-mapel-guru').value = g.mapel;
             document.getElementById('input-username-guru').value = g.username;
             document.getElementById('input-password-guru').value = g.password;
+            document.getElementById('form-guru-title').innerText = '✏️ Edit Guru & Mapel';
+            document.getElementById('btn-submit-guru').innerText = 'Simpan Perubahan';
         }
 
-        function resetFormGuru() { document.getElementById('form-guru-admin').reset(); document.getElementById('edit-guru-id').value = ''; }
+        function resetFormGuru() { 
+            document.getElementById('form-guru-admin').reset(); 
+            document.getElementById('edit-guru-id').value = ''; 
+            document.getElementById('form-guru-title').innerText = 'Tambah Guru & Mapel';
+            document.getElementById('btn-submit-guru').innerText = 'Simpan Guru';
+        }
 
-        async function handleDeleteGuru(id) {
+        async function handleDeleteGuru(id, namaGuru) {
+            if (!confirm(`Apakah anda yakin akan menghapus guru "${namaGuru}" ?`)) return;
             globalDbData.users.guru = globalDbData.users.guru.filter(g => g.id != id);
             await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
         }
@@ -1270,6 +1335,7 @@
             reader.readAsArrayBuffer(fileInput.files[0]);
         }
 
+        // --- MANAJEMEN SISWA (ADMIN) ---
         async function handleCreateOrUpdateSiswa(event) {
             event.preventDefault();
             const id = document.getElementById('edit-siswa-id').value;
@@ -1286,7 +1352,38 @@
                 globalDbData.users.siswa.push({ id: getNextAutoId(globalDbData.users.siswa), nama, kelas, username, password });
             }
             const success = await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
-            if (success) { alert('Siswa disimpan!'); document.getElementById('form-siswa-admin').reset(); }
+            if (success) { alert('Siswa disimpan!'); resetFormSiswa(); }
+        }
+
+        function prepareEditSiswa(id) {
+            const s = globalDbData.users.siswa.find(item => item.id == id);
+            if (!s) return;
+            document.getElementById('edit-siswa-id').value = s.id;
+            document.getElementById('input-nama-siswa').value = s.nama;
+            document.getElementById('input-kelas-siswa').value = s.kelas;
+            document.getElementById('input-username-siswa').value = s.username;
+            document.getElementById('input-password-siswa').value = s.password;
+            document.getElementById('btn-submit-siswa').innerText = 'Simpan Perubahan';
+            document.getElementById('btn-cancel-siswa').classList.remove('hidden');
+        }
+
+        function resetFormSiswa() {
+            document.getElementById('form-siswa-admin').reset();
+            document.getElementById('edit-siswa-id').value = '';
+            document.getElementById('btn-submit-siswa').innerText = 'Simpan Siswa';
+            document.getElementById('btn-cancel-siswa').classList.add('hidden');
+        }
+
+        async function handleDeleteSiswa(id, namaSiswa) {
+            if (!confirm(`Apakah anda yakin akan menghapus siswa "${namaSiswa}" ?`)) return;
+            globalDbData.users.siswa = globalDbData.users.siswa.filter(s => s.id != id);
+            await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
+        }
+
+        async function handleDeleteAllSiswa() {
+            if (!confirm('Apakah anda yakin akan menghapus SEMUA data siswa ?')) return;
+            globalDbData.users.siswa = [];
+            await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
         }
 
         function downloadTemplateSiswaExcel() {
@@ -1334,6 +1431,7 @@
             if (setting) setting.value = newPass; else globalDbData.settings.admin_setting.push({ key: 'admin_password', value: newPass });
             await updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings);
             alert('Password Admin diubah!');
+            renderData();
         }
 
         function renderData() {
@@ -1343,7 +1441,7 @@
                 document.getElementById('list-kelas-admin').innerHTML = globalDbData.settings.kelas.map(k => `
                     <li class="p-2 bg-white border rounded text-xs flex justify-between items-center">
                         <b>${k.nama}</b>
-                        <button onclick="handleDeleteKelas(${k.id})" class="bg-red-500 text-white px-2 py-0.5 rounded">Hapus</button>
+                        <button onclick="handleDeleteKelas(${k.id}, '${k.nama}')" class="bg-red-500 text-white px-2 py-0.5 rounded font-bold">Hapus</button>
                     </li>`).join('');
                 document.getElementById('input-jadwal-kelas').innerHTML = '<option value="">Pilih Kelas...</option>' + globalDbData.settings.kelas.map(k => `<option value="${k.nama}">${k.nama}</option>`).join('');
             }
@@ -1352,23 +1450,35 @@
                 document.getElementById('list-guru-admin').innerHTML = globalDbData.users.guru.map(g => `
                     <li class="p-3 bg-white border rounded text-xs flex justify-between items-center">
                         <div><b>${g.nama}</b> (${g.mapel})<br><span class="font-mono text-gray-500">${g.username} / ${g.password}</span></div>
-                        <div class="space-x-1"><button onclick="prepareEditGuru(${g.id})" class="bg-amber-500 text-white px-2 py-1 rounded">Edit</button><button onclick="handleDeleteGuru(${g.id})" class="bg-red-500 text-white px-2 py-1 rounded">Hapus</button></div>
+                        <div class="space-x-1">
+                            <button onclick="prepareEditGuru(${g.id})" class="bg-amber-500 text-white px-2 py-1 rounded font-bold">Edit</button>
+                            <button onclick="handleDeleteGuru(${g.id}, '${g.nama}')" class="bg-red-500 text-white px-2 py-1 rounded font-bold">Hapus</button>
+                        </div>
                     </li>`).join('');
             }
             if (globalDbData.users?.siswa) {
                 document.getElementById('stat-total-siswa').innerText = globalDbData.users.siswa.length;
-                document.getElementById('list-siswa-admin').innerHTML = globalDbData.users.siswa.map(s => `
+                
+                // Fitur Pencarian Siswa Berdasarkan Nama
+                const searchVal = document.getElementById('search-siswa-input')?.value.toLowerCase() || "";
+                const filteredSiswa = globalDbData.users.siswa.filter(s => s.nama.toLowerCase().includes(searchVal) || s.kelas.toLowerCase().includes(searchVal));
+
+                document.getElementById('list-siswa-admin').innerHTML = filteredSiswa.length === 0 ? '<p class="text-xs text-gray-400">Tidak ada siswa ditemukan.</p>' :
+                    filteredSiswa.map(s => `
                     <li class="p-3 bg-white border rounded text-xs flex justify-between items-center">
                         <div><b>${s.nama}</b> (${s.kelas})<br><span class="font-mono text-gray-500">${s.username} / ${s.password}</span></div>
+                        <div class="space-x-1">
+                            <button onclick="prepareEditSiswa(${s.id})" class="bg-amber-500 text-white px-2 py-1 rounded font-bold">Edit</button>
+                            <button onclick="handleDeleteSiswa(${s.id}, '${s.nama}')" class="bg-red-500 text-white px-2 py-1 rounded font-bold">Hapus</button>
+                        </div>
                     </li>`).join('');
             }
+            
             const durasiJpSetting = globalDbData.settings?.admin_setting?.find(s => s.key === 'durasi_jp')?.value || '40';
             if (document.getElementById('input-durasi-jp')) document.getElementById('input-durasi-jp').value = durasiJpSetting;
-        }
 
-        async function handleDeleteKelas(id) {
-            globalDbData.settings.kelas = globalDbData.settings.kelas.filter(k => k.id != id);
-            await updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings);
+            const adminPassSetting = globalDbData.settings?.admin_setting?.find(s => s.key === 'admin_password')?.value || 'admin123';
+            if (document.getElementById('display-current-admin-pass')) document.getElementById('display-current-admin-pass').innerText = adminPassSetting;
         }
 
         function updateOtomatisHari() {
