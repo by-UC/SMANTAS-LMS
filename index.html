@@ -178,6 +178,27 @@
                                 <button onclick="handleSaveDurasiJp()" class="bg-blue-600 text-white font-bold px-4 py-2 rounded text-sm">Simpan JP</button>
                             </div>
                         </div>
+
+                        <!-- FITUR BARU: DOWNLOAD, UPLOAD, & HAPUS ABSEN, TUGAS, JADWAL -->
+                        <div class="space-y-3 border-b pb-4">
+                            <h3 class="text-sm font-bold">Backup & Restore Sistem (JSON)</h3>
+                            <div class="flex gap-2">
+                                <button onclick="handleBackupDatabase()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded text-xs">📥 Download Backup</button>
+                                <label class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded text-xs text-center cursor-pointer">
+                                    📤 Upload / Restore <input type="file" id="input-restore-json" accept=".json" onchange="handleRestoreDatabase(event)" class="hidden">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 border-b pb-4">
+                            <h3 class="text-sm font-bold text-red-600">Pembersihan Data Transaksional</h3>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button onclick="handleDeleteDataTransaksi('absen')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-2 rounded text-xs">🗑️ Hapus Absen</button>
+                                <button onclick="handleDeleteDataTransaksi('tugas')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-2 rounded text-xs">🗑️ Hapus Tugas</button>
+                                <button onclick="handleDeleteDataTransaksi('jadwal')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-2 rounded text-xs">🗑️ Hapus Jadwal</button>
+                            </div>
+                        </div>
+
                         <div class="space-y-3">
                             <h3 class="text-sm font-bold">Pengaturan Password Admin</h3>
                             <div class="p-3 bg-gray-50 border rounded-lg text-xs space-y-1">
@@ -899,7 +920,7 @@
 
             container.innerHTML = `
                 <div class="bg-blue-50 p-3 rounded-lg text-xs font-bold text-blue-900 mb-3">
-                    Rekap Kelas: ${jadwal.kelas} | Total Siswa: ${siswaKelas.length} Orang
+                    Rekap Kelas ${jadwal.kelas} | Total : ${siswaKelas.length} siswa | Hadir : ${absenKelas.filter(a => a.status === 'Hadir').length} | Terlambat : ${absenKelas.filter(a => a.status === 'Terlambat').length} | Alpa : ${siswaKelas.length - absenKelas.length} | Mengirim Tugas : ${tugasKelas.length}
                 </div>
                 <div class="space-y-2">
                     ${siswaKelas.map(s => {
@@ -1242,6 +1263,93 @@
             modal.classList.add('hidden');
         }
 
+        // --- FITUR ADMIN: BACKUP, RESTORE, & HAPUS TRANSAKSI ---
+        function handleBackupDatabase() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(globalDbData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `LMS_Backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        async function handleRestoreDatabase(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!confirm("⚠️ Peringatan: Restore data akan menimpa seluruh data yang ada saat ini dengan data dari file JSON. Lanjutkan?")) {
+                event.target.value = "";
+                return;
+            }
+
+            showLoading("Memulihkan database dari backup...");
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed.users && parsed.settings && parsed.jadwal) {
+                        globalDbData = parsed;
+                        saveCacheData();
+
+                        // Sinkronkan ke masing-masing Gist
+                        await Promise.all([
+                            updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users),
+                            updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings),
+                            updateGistData(GIST_ID_JADWAL, 'db_jadwal.json', globalDbData.jadwal),
+                            updateGistData(GIST_ID_ABSEN, 'db_absen.json', globalDbData.absen || []),
+                            updateGistData(GIST_ID_TUGAS, 'db_tugas.json', globalDbData.tugas || [])
+                        ]);
+
+                        hideLoading();
+                        alert('Restorasi database berhasil!');
+                        location.reload();
+                    } else {
+                        hideLoading();
+                        alert('Format file backup JSON tidak valid.');
+                    }
+                } catch (err) {
+                    hideLoading();
+                    alert('Gagal membaca file JSON: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function handleDeleteDataTransaksi(tipe) {
+            let namaTipe = '';
+            let gistId = '';
+            let filename = '';
+
+            if (tipe === 'absen') {
+                namaTipe = 'Data Absensi';
+                gistId = GIST_ID_ABSEN;
+                filename = 'db_absen.json';
+                globalDbData.absen = [];
+            } else if (tipe === 'tugas') {
+                namaTipe = 'Data Pengiriman Tugas & Nilai';
+                gistId = GIST_ID_TUGAS;
+                filename = 'db_tugas.json';
+                globalDbData.tugas = [];
+            } else if (tipe === 'jadwal') {
+                namaTipe = 'Data Jadwal & Materi';
+                gistId = GIST_ID_JADWAL;
+                filename = 'db_jadwal.json';
+                globalDbData.jadwal = [];
+            }
+
+            if (!confirm(`⚠️ PERINGATAN KERAS: Apakah Anda yakin ingin menghapus SELURUH ${namaTipe}? Tindakan ini tidak dapat dibatalkan!`)) return;
+
+            showLoading(`Menghapus ${namaTipe}...`);
+            const success = await updateGistData(gistId, filename, globalDbData[tipe]);
+            hideLoading();
+
+            if (success) {
+                alert(`${namaTipe} berhasil dikosongkan!`);
+                renderData();
+            }
+        }
+
         // --- MANAJEMEN ADMIN (KELAS, GURU, SISWA) ---
         async function handleCreateClass(event) {
             event.preventDefault();
@@ -1364,7 +1472,6 @@
                     let addedCount = 0;
 
                     rows.forEach(r => {
-                        // Dukungan pembacaan fleksibel (PascalCase atau lowercase)
                         const namaVal = r.Nama || r.nama || r.NAMA;
                         const mapelVal = r.Mapel || r.mapel || r.MAPEL;
                         const userVal = r.Username || r.username || r.USERNAME;
@@ -1497,7 +1604,6 @@
                     let addedCount = 0;
 
                     rows.forEach(r => {
-                        // Dukungan pembacaan fleksibel (PascalCase atau lowercase)
                         const namaVal = r.Nama || r.nama || r.NAMA;
                         const kelasVal = r.Kelas || r.kelas || r.KELAS;
                         const userVal = r.Username || r.username || r.USERNAME;
