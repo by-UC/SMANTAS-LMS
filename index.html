@@ -182,22 +182,23 @@
                                     </div>
                                 </div>
 
-                                <div class="grid grid-cols-3 gap-2">
-                                    <div>
+                                <!-- Grid Jam Mulai, Jumlah JP (diperkecil), Jam Selesai -->
+                                <div class="grid grid-cols-12 gap-2">
+                                    <div class="col-span-5">
                                         <label class="block text-[11px] font-bold">Jam Mulai</label>
                                         <input type="time" id="input-jam-mulai" required value="06:30" onchange="hitungJamSelesaiOtomatis()" class="w-full p-2 border rounded text-xs">
                                     </div>
-                                    <div>
-                                        <label class="block text-[11px] font-bold">Jumlah JP</label>
+                                    <div class="col-span-2">
+                                        <label class="block text-[11px] font-bold">JP</label>
                                         <select id="input-jumlah-jp" onchange="hitungJamSelesaiOtomatis()" class="w-full p-2 border rounded text-xs bg-white font-bold">
-                                            <option value="1">1 JP</option>
-                                            <option value="2" selected>2 JP</option>
-                                            <option value="3">3 JP</option>
-                                            <option value="4">4 JP</option>
+                                            <option value="1">1</option>
+                                            <option value="2" selected>2</option>
+                                            <option value="3">3</option>
+                                            <option value="4">4</option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label class="block text-[11px] font-bold">Jam Selesai (Otomatis)</label>
+                                    <div class="col-span-5">
+                                        <label class="block text-[11px] font-bold">Selesai (Otomatis)</label>
                                         <input type="time" id="input-jam-selesai" required readonly class="w-full p-2 border rounded text-xs bg-gray-100 font-bold">
                                     </div>
                                 </div>
@@ -230,7 +231,10 @@
                     </div>
                     <!-- Tab Periksa / Absen & Nilai -->
                     <div id="guru-tab-periksa" class="guru-tab-content hidden space-y-6">
-                        <h3 class="text-sm font-bold text-gray-800">Rekapitulasi Kehadiran, Penilaian & Remedial</h3>
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <h3 class="text-sm font-bold text-gray-800">Rekapitulasi Kehadiran, Penilaian & Remedial</h3>
+                            <button onclick="downloadRekapExcel()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5">📥 Download Rekap (Excel)</button>
+                        </div>
                         <select id="select-jadwal-rekap" onchange="renderRekapAbsenGuru()" class="w-full p-2.5 border rounded-lg text-xs bg-white font-semibold">
                             <option value="">-- Pilih Materi / Jadwal untuk Direkap --</option>
                         </select>
@@ -324,7 +328,7 @@
 
         function getMenitPerJp() {
             const setting = globalDbData.settings?.admin_setting?.find(s => s.key === 'durasi_jp');
-            return setting ? Number(setting.value) : 40; // Default 40 menit per 1 JP
+            return setting ? Number(setting.value) : 40;
         }
 
         function hitungJamSelesaiOtomatis() {
@@ -510,6 +514,7 @@
                             <div class="pt-2 flex gap-1">
                                 <button onclick="prepareEditJadwal(${j.id})" class="bg-amber-500 text-white px-2.5 py-1 rounded font-bold">Edit</button>
                                 <button onclick="handleDeleteJadwal(${j.id})" class="bg-red-500 text-white px-2.5 py-1 rounded font-bold">Hapus</button>
+                                <button onclick="toggleHentikanJadwalGlobal(${j.id})" class="${j.hentikanGlobal ? 'bg-red-600' : 'bg-gray-600'} text-white px-2.5 py-1 rounded font-bold">${j.hentikanGlobal ? 'Lanjutkan' : 'Hentikan'}</button>
                             </div>
                         </div>
                     `).join('');
@@ -580,10 +585,22 @@
                 }
             } else {
                 const nextId = getNextAutoId(globalDbData.jadwal);
-                globalDbData.jadwal.push({ id: nextId, guruId: currentUser.id, namaGuru: currentUser.nama, kelas, tanggal, hari, jamMulai, jamSelesai, mapel, topik, link, fileUrl });
+                globalDbData.jadwal.push({ id: nextId, guruId: currentUser.id, namaGuru: currentUser.nama, kelas, tanggal, hari, jamMulai, jamSelesai, mapel, topik, link, fileUrl, hentikanGlobal: false });
             }
             const success = await updateGistData(GIST_ID_JADWAL, 'db_jadwal.json', globalDbData.jadwal);
             if (success) { alert('Materi berhasil disimpan!'); resetFormJadwal(); setupGuruDashboardData(); }
+        }
+
+        async function toggleHentikanJadwalGlobal(jadwalId) {
+            const j = globalDbData.jadwal.find(item => item.id == jadwalId);
+            if (!j) return;
+            j.hentikanGlobal = !j.hentikanGlobal;
+
+            const success = await updateGistData(GIST_ID_JADWAL, 'db_jadwal.json', globalDbData.jadwal);
+            if (success) {
+                alert(j.hentikanGlobal ? 'Pengiriman tugas untuk materi ini telah DIHENTIKAN bagi seluruh siswa.' : 'Pengiriman tugas untuk materi ini DILANJUTKAN kembali.');
+                setupGuruDashboardData();
+            }
         }
 
         function prepareEditJadwal(id) {
@@ -649,11 +666,19 @@
                     ${siswaKelas.map(s => {
                         const abs = absenKelas.find(a => a.siswaId == s.id);
                         const tug = tugasKelas.find(t => t.siswaId == s.id);
+                        
+                        let statusKehadiran = 'Alpa';
+                        let warnaStatus = 'text-red-500';
+                        if (abs) {
+                            statusKehadiran = abs.status;
+                            warnaStatus = statusKehadiran === 'Hadir' ? 'text-green-600' : 'text-amber-600';
+                        }
+
                         return `
                             <div class="p-3 bg-white border rounded-lg text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shadow-sm">
                                 <div>
                                     <span class="font-bold text-gray-800 text-sm">${s.nama}</span>
-                                    <div class="text-gray-500 mt-0.5">Absen: <span class="font-bold ${abs ? 'text-green-600' : 'text-red-500'}">${abs ? abs.status : 'Belum Absen'}</span></div>
+                                    <div class="text-gray-500 mt-0.5">Kehadiran: <span class="font-bold ${warnaStatus}">${statusKehadiran}</span></div>
                                 </div>
                                 <div class="flex flex-col sm:flex-row items-end sm:items-center gap-2">
                                     <div class="text-right">
@@ -664,7 +689,7 @@
                                     </div>
                                     <div class="flex gap-1">
                                         <button onclick="bukaModalNilai(${jadwal.id}, ${s.id})" class="bg-amber-500 text-white px-2.5 py-1 rounded font-bold">📝 Nilai</button>
-                                        <button onclick="toggleRemedial(${jadwal.id}, ${s.id})" class="${tug && tug.remedial ? 'bg-red-600' : 'bg-gray-400'} text-white px-2.5 py-1 rounded font-bold">${tug && tug.remedial ? '⚠️ Remedial' : 'Hentikan / Remedial'}</button>
+                                        <button onclick="toggleRemedial(${jadwal.id}, ${s.id})" class="${tug && tug.remedial ? 'bg-red-600' : 'bg-gray-400'} text-white px-2.5 py-1 rounded font-bold">${tug && tug.remedial ? '⚠️ Remedial' : 'Remedial'}</button>
                                     </div>
                                 </div>
                             </div>
@@ -675,14 +700,31 @@
         }
 
         async function bukaModalNilai(jadwalId, siswaId) {
-            const nilai = prompt('Masukkan Nilai Angka (0-100):');
-            if (nilai === null) return;
-            const komentar = prompt('Masukkan Komentar / Catatan untuk Siswa:');
-            
             let tug = globalDbData.tugas.find(t => t.jadwalId == jadwalId && t.siswaId == siswaId);
-            if (!tug) { alert('Siswa ini belum mengirimkan tugas.'); return; }
-            tug.nilai = Number(nilai);
-            tug.komentar = komentar || '';
+            const defaultNilai = tug && tug.nilai !== undefined ? tug.nilai : 75;
+            const defaultKomentar = tug && tug.komentar ? tug.komentar : "Bagus, tingkatkan lagi pemahaman materinya.";
+
+            const nilaiInput = prompt('Masukkan Nilai Angka (0-100):', defaultNilai);
+            if (nilaiInput === null) return;
+            const komentarInput = prompt('Masukkan Komentar / Catatan untuk Siswa:', defaultKomentar);
+            
+            if (!tug) {
+                if (!globalDbData.tugas) globalDbData.tugas = [];
+                const siswaObj = globalDbData.users.siswa.find(s => s.id == siswaId);
+                globalDbData.tugas.push({
+                    id: getNextAutoId(globalDbData.tugas),
+                    jadwalId,
+                    siswaId,
+                    namaSiswa: siswaObj ? siswaObj.nama : 'Siswa',
+                    kelas: siswaObj ? siswaObj.kelas : '',
+                    fileUrl: '',
+                    nilai: Number(nilaiInput),
+                    komentar: komentarInput || ''
+                });
+            } else {
+                tug.nilai = Number(nilaiInput);
+                tug.komentar = komentarInput || '';
+            }
 
             const success = await updateGistData(GIST_ID_TUGAS, 'db_tugas.json', globalDbData.tugas);
             if (success) { alert('Nilai berhasil disimpan!'); renderRekapAbsenGuru(); }
@@ -697,18 +739,67 @@
             if (success) { alert(tug.remedial ? 'Status Remedial diaktifkan.' : 'Status Remedial dicabut.'); renderRekapAbsenGuru(); }
         }
 
+        function downloadRekapExcel() {
+            const jadwalId = document.getElementById('select-jadwal-rekap').value;
+            if (!jadwalId) { alert('Pilih materi/jadwal terlebih dahulu!'); return; }
+
+            const jadwal = globalDbData.jadwal.find(j => j.id == jadwalId);
+            if (!jadwal) return;
+
+            const siswaKelas = globalDbData.users.siswa.filter(s => s.kelas === jadwal.kelas);
+            const absenKelas = globalDbData.absen.filter(a => a.jadwalId == jadwalId);
+            const tugasKelas = globalDbData.tugas.filter(t => t.jadwalId == jadwalId);
+
+            const dataExport = siswaKelas.map((s, idx) => {
+                const abs = absenKelas.find(a => a.siswaId == s.id);
+                const tug = tugasKelas.find(t => t.siswaId == s.id);
+                return {
+                    "No": idx + 1,
+                    "Nama Siswa": s.nama,
+                    "Kelas": s.kelas,
+                    "Kehadiran": abs ? abs.status : "Alpa",
+                    "Waktu Akses": abs ? abs.waktu : "-",
+                    "Nilai Tugas": tug && tug.nilai !== undefined ? tug.nilai : "Belum Dinilai",
+                    "Komentar Guru": tug ? (tug.komentar || "-") : "-"
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(dataExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Rekap_Nilai_Absen");
+            XLSX.writeFile(wb, `Rekap_${jadwal.mapel}_${jadwal.kelas}_${jadwal.tanggal}.xlsx`);
+        }
+
         // --- DASHBOARD SISWA ---
         function setupSiswaDashboardData() {
             const listJadwalSiswa = document.getElementById('list-jadwal-siswa');
             const listRiwayatSiswa = document.getElementById('list-riwayat-siswa');
             if (!listJadwalSiswa || !currentUser || currentUser.role !== 'siswa') return;
 
-            const jadwalKelas = globalDbData.jadwal.filter(j => j.kelas === currentUser.kelas);
+            let jadwalKelas = globalDbData.jadwal.filter(j => j.kelas === currentUser.kelas);
+
+            // Urutkan: Belum dikerjakan di atas, lalu terbaru ke terlama
+            jadwalKelas.sort((a, b) => {
+                const aSudahAbsen = globalDbData.absen.some(x => x.jadwalId == a.id && x.siswaId == currentUser.id);
+                const aSudahTugas = globalDbData.tugas.some(x => x.jadwalId == a.id && x.siswaId == currentUser.id);
+                const aSelesai = aSudahAbsen && aSudahTugas ? 1 : 0;
+
+                const bSudahAbsen = globalDbData.absen.some(x => x.jadwalId == b.id && x.siswaId == currentUser.id);
+                const bSudahTugas = globalDbData.tugas.some(x => x.jadwalId == b.id && x.siswaId == currentUser.id);
+                const bSelesai = bSudahAbsen && bSudahTugas ? 1 : 0;
+
+                if (aSelesai !== bSelesai) return aSelesai - bSelesai;
+
+                const dateA = new Date(`${a.tanggal}T${a.jamMulai || '00:00'}`);
+                const dateB = new Date(`${b.tanggal}T${b.jamMulai || '00:00'}`);
+                return dateB - dateA;
+            });
 
             listJadwalSiswa.innerHTML = jadwalKelas.length === 0 ? '<p class="text-xs text-gray-400">Belum ada materi atau tugas untuk kelas Anda.</p>' :
                 jadwalKelas.map(j => {
-                    const sudahAbsen = globalDbData.absen.some(a => a.jadwalId == j.id && a.siswaId == currentUser.id);
+                    const absenSiswa = globalDbData.absen.find(a => a.jadwalId == j.id && a.siswaId == currentUser.id);
                     const tugasSiswa = globalDbData.tugas.find(t => t.jadwalId == j.id && t.siswaId == currentUser.id);
+                    
                     return `
                         <div class="p-4 bg-gray-50 border rounded-xl space-y-2 text-xs shadow-sm">
                             <div class="flex justify-between items-start">
@@ -724,19 +815,21 @@
                             ${j.link ? `<div><a href="${j.link}" target="_blank" class="inline-block bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg shadow">🔗 Buka Link Zoom / YouTube</a></div>` : ''}
                             
                             <!-- Tombol Penampil File Materi -->
-                            ${j.fileUrl ? `<div><button onclick="bukaViewer('${j.fileUrl}', '${j.topik}')" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg shadow">📄 Baca/Lihat Materi (PDF/Word/Gambar)</button></div>` : ''}
+                            ${j.fileUrl ? `<div><button onclick="bukaMateriSiswa(${j.id}, '${j.fileUrl}', '${j.topik}')" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg shadow">📄 Baca/Lihat Materi (PDF/Word/Gambar)</button></div>` : `<div><button onclick="catatAksesMateriTanpaFile(${j.id})" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg shadow">👁️ Akses Materi</button></div>`}
 
                             <div class="pt-2 border-t flex flex-wrap gap-2 items-center">
-                                ${!sudahAbsen ? `
-                                    <button onclick="handleAbsenSiswa(${j.id})" class="bg-green-600 text-white font-bold px-3 py-1.5 rounded-lg">✅ Hadir / Absen</button>
-                                ` : `<span class="text-green-600 font-bold">✅ Sudah Absen</span>`}
-
-                                <div class="w-full mt-2 space-y-1">
+                                <div class="w-full mt-1 space-y-1">
                                     <label class="font-bold text-gray-700">Kirim Tugas (PDF, Word, Gambar):</label>
-                                    <div class="flex gap-2">
-                                        <input type="file" id="input-file-tugas-${j.id}" accept=".pdf, .doc, .docx, .jpg, .jpeg, .png" class="text-xs border p-1 rounded bg-white flex-1">
-                                        <button onclick="handleKirimTugas(${j.id})" class="bg-blue-600 text-white font-bold px-3 py-1 rounded">📤 Upload Tugas</button>
-                                    </div>
+                                    ${j.hentikanGlobal ? `
+                                        <div class="p-2 bg-red-50 border border-red-200 text-red-600 font-bold rounded">
+                                            ⛔ Pengiriman tugas untuk materi ini telah dihentikan oleh Guru.
+                                        </div>
+                                    ` : `
+                                        <div class="flex gap-2">
+                                            <input type="file" id="input-file-tugas-${j.id}" accept=".pdf, .doc, .docx, .jpg, .jpeg, .png" class="text-xs border p-1 rounded bg-white flex-1">
+                                            <button onclick="handleKirimTugas(${j.id})" class="bg-blue-600 text-white font-bold px-3 py-1 rounded">📤 Upload Tugas</button>
+                                        </div>
+                                    `}
                                     ${tugasSiswa ? `
                                         <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
                                             <p class="text-green-600 font-bold">✅ Tugas Terkirim ${tugasSiswa.remedial ? '<span class="text-red-500">(Harap Remedial)</span>' : ''}</p>
@@ -755,7 +848,7 @@
 
             listRiwayatSiswa.innerHTML = `
                 <div class="space-y-2">
-                    <p class="font-bold text-gray-700">Total Kehadiran: <span class="text-green-600">${riwayatAbsen.length} Pertemuan</span></p>
+                    <p class="font-bold text-gray-700">Total Akses / Kehadiran Tercatat: <span class="text-green-600">${riwayatAbsen.length} Pertemuan</span></p>
                     <p class="font-bold text-gray-700">Total Tugas Dikirim: <span class="text-blue-600">${riwayatTugas.length} Tugas</span></p>
                     ${riwayatTugas.map(t => {
                         const mat = globalDbData.jadwal.find(j => j.id == t.jadwalId);
@@ -772,27 +865,71 @@
             `;
         }
 
-        async function handleAbsenSiswa(jadwalId) {
+        async function catatOtomatisAbsen(jadwalId) {
             if (!globalDbData.absen) globalDbData.absen = [];
-            globalDbData.absen.push({
-                id: getNextAutoId(globalDbData.absen),
-                jadwalId,
-                siswaId: currentUser.id,
-                namaSiswa: currentUser.nama,
-                kelas: currentUser.kelas,
-                status: 'Hadir',
-                waktu: new Date().toLocaleString()
-            });
-            const success = await updateGistData(GIST_ID_ABSEN, 'db_absen.json', globalDbData.absen);
-            if (success) { alert('Absensi berhasil dicatat!'); setupSiswaDashboardData(); }
+            const jadwal = globalDbData.jadwal.find(j => j.id == jadwalId);
+            if (!jadwal) return;
+
+            const now = new Date();
+            const jamMulaiParts = jadwal.jamMulai.split(':');
+            const jamSelesaiParts = jadwal.jamSelesai.split(':');
+
+            const waktuMulai = new Date(jadwal.tanggal);
+            waktuMulai.setHours(Number(jamMulaiParts[0]), Number(jamMulaiParts[1]), 0);
+
+            const waktuSelesai = new Date(jadwal.tanggal);
+            waktuSelesai.setHours(Number(jamSelesaiParts[0]), Number(jamSelesaiParts[1]), 0);
+
+            let existing = globalDbData.absen.find(a => a.jadwalId == jadwalId && a.siswaId == currentUser.id);
+            
+            let status = 'Hadir';
+            if (now > waktuSelesai || now < waktuMulai) {
+                status = 'Terlambat';
+            }
+
+            if (existing) {
+                existing.status = status;
+                existing.waktu = now.toLocaleString();
+            } else {
+                globalDbData.absen.push({
+                    id: getNextAutoId(globalDbData.absen),
+                    jadwalId,
+                    siswaId: currentUser.id,
+                    namaSiswa: currentUser.nama,
+                    kelas: currentUser.kelas,
+                    status: status,
+                    waktu: now.toLocaleString()
+                });
+            }
+
+            await updateGistData(GIST_ID_ABSEN, 'db_absen.json', globalDbData.absen);
+        }
+
+        async function bukaMateriSiswa(jadwalId, fileUrl, topik) {
+            await catatOtomatisAbsen(jadwalId);
+            bukaViewer(fileUrl, topik);
+        }
+
+        async function catatAksesMateriTanpaFile(jadwalId) {
+            await catatOtomatisAbsen(jadwalId);
+            alert('Akses materi berhasil dicatat sebagai kehadiran Anda.');
+            setupSiswaDashboardData();
         }
 
         async function handleKirimTugas(jadwalId) {
+            const jadwal = globalDbData.jadwal.find(j => j.id == jadwalId);
+            if (jadwal && jadwal.hentikanGlobal) {
+                alert('Pengiriman tugas telah dihentikan oleh guru.');
+                return;
+            }
+
             const fileInput = document.getElementById(`input-file-tugas-${jadwalId}`);
             if (fileInput.files.length === 0) { alert('Pilih file tugas terlebih dahulu!'); return; }
             const file = fileInput.files[0];
-            const reader = new FileReader();
             
+            await catatOtomatisAbsen(jadwalId);
+
+            const reader = new FileReader();
             reader.onload = async function(e) {
                 const base64Data = e.target.result.split(',')[1];
                 const payload = {
