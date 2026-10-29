@@ -309,22 +309,7 @@
     <!-- AREA CETAK KARTU SISWA (Khusus Print) -->
     <div id="print-area" class="hidden"></div>
 
-    <!-- MODAL GANTI PASSWORD -->
-    <div id="ganti-password-modal" class="hidden fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-            <div class="bg-amber-500 text-white px-6 py-4 flex justify-between items-center">
-                <h3 class="font-bold text-sm">🔑 Ganti Password Akun</h3>
-                <button onclick="tutupModalGantiPasswordSelf()" class="text-white font-bold">✕</button>
-            </div>
-            <form onsubmit="handleGantiPasswordSelf(event)" class="p-6 space-y-4">
-                <input type="password" id="self-pass-lama" required class="w-full border rounded-lg p-2.5 text-sm" placeholder="Password Lama">
-                <input type="password" id="self-pass-baru" required class="w-full border rounded-lg p-2.5 text-sm" placeholder="Password Baru">
-                <button type="submit" class="w-full bg-amber-500 text-white font-bold py-2 rounded-lg text-xs">Simpan Password Baru</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- SCRIPT UTAMA DENGAN INTEGRASI GIST TOKEN -->
+    <!-- SCRIPT UTAMA DENGAN INTEGRASI GIST TOKEN (5 DATABASE) -->
     <script>
         const t1 = "ghp_5Ofh9x64itKcWGL1PDIk0";
         const t2 = "V2eEWYvRV0AFFLJ";
@@ -333,15 +318,17 @@
         const GIST_ID_USERS = 'e15dd382065a96876b3041bab40bf710';
         const GIST_ID_SETTINGS = '6d9a7f88b70c8122b6803be6e9ac241e';
         const GIST_ID_JADWAL = '77f20c1cfa75110dc763ca3c8daf84a8';
+        const GIST_ID_ABSEN = '25cda61c00a78a5cc032b1e04bcfe912';
+        const GIST_ID_TUGAS = '6dbb4c4b91ef7306eacd46bc4b0b0e7f';
 
         const DB_URL_USERS = `https://gist.githubusercontent.com/by-UC/${GIST_ID_USERS}/raw/db_users.json`;
         const DB_URL_SETTINGS = `https://gist.githubusercontent.com/by-UC/${GIST_ID_SETTINGS}/raw/db_settings.json`;
         const DB_URL_JADWAL = `https://gist.githubusercontent.com/by-UC/${GIST_ID_JADWAL}/raw/db_jadwal.json`;
-
-        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzaBVstIdKYVk0pAoTb1IbAjNM2mtAXzpdQ1Kn00LZ1yKlf0W30ofZXeUgzdnI26YI7/exec';
+        const DB_URL_ABSEN = `https://gist.githubusercontent.com/by-UC/${GIST_ID_ABSEN}/raw/db_absen.json`;
+        const DB_URL_TUGAS = `https://gist.githubusercontent.com/by-UC/${GIST_ID_TUGAS}/raw/db_tugas.json`;
 
         let currentUser = null;
-        let globalDbData = { users: null, settings: null, jadwal: null };
+        let globalDbData = { users: null, settings: null, jadwal: null, absen: null, tugas: null };
 
         document.addEventListener('DOMContentLoaded', async () => {
             const savedUser = localStorage.getItem('lms_user');
@@ -356,14 +343,18 @@
 
         async function fetchAllDatabases() {
             try {
-                const [resUsers, resSettings, resJadwal] = await Promise.all([
+                const [resUsers, resSettings, resJadwal, resAbsen, resTugas] = await Promise.all([
                     fetch(DB_URL_USERS + '?t=' + Date.now()).then(r => r.json()),
                     fetch(DB_URL_SETTINGS + '?t=' + Date.now()).then(r => r.json()),
-                    fetch(DB_URL_JADWAL + '?t=' + Date.now()).then(r => r.json())
+                    fetch(DB_URL_JADWAL + '?t=' + Date.now()).then(r => r.json()),
+                    fetch(DB_URL_ABSEN + '?t=' + Date.now()).then(r => r.json()),
+                    fetch(DB_URL_TUGAS + '?t=' + Date.now()).then(r => r.json())
                 ]);
                 globalDbData.users = resUsers;
                 globalDbData.settings = resSettings;
                 globalDbData.jadwal = resJadwal;
+                globalDbData.absen = resAbsen;
+                globalDbData.tugas = resTugas;
                 renderData();
             } catch (err) { console.error("Gagal memuat database:", err); }
         }
@@ -389,6 +380,13 @@
                 alert('Kesalahan Sinkronisasi Gist: ' + err.message);
                 return false;
             }
+        }
+
+        // --- FUNGSI AUTO INCREMENT ID (1, 2, 3, dst) ---
+        function getNextAutoId(list) {
+            if (!list || list.length === 0) return 1;
+            const validIds = list.map(item => Number(item.id)).filter(id => !isNaN(id) && id < 1000000);
+            return validIds.length > 0 ? Math.max(...validIds) + 1 : 1;
         }
 
         async function handleLogin(event) {
@@ -427,9 +425,6 @@
             
             const userInfoBadge = document.getElementById('user-info-badge');
             userInfoBadge.innerText = currentUser.role === 'siswa' ? `${currentUser.nama} (${currentUser.kelas})` : `${currentUser.nama} (${currentUser.role.toUpperCase()})`;
-            
-            const btnSelfPass = document.getElementById('btn-ganti-password-self');
-            if (currentUser.role === 'guru' || currentUser.role === 'siswa') btnSelfPass.classList.remove('hidden');
             renderData();
         }
 
@@ -454,8 +449,11 @@
         async function handleCreateClass(event) {
             event.preventDefault();
             const nama = document.getElementById('input-nama-kelas').value.trim();
+            if (!nama) return;
             if (!globalDbData.settings.kelas) globalDbData.settings.kelas = [];
-            globalDbData.settings.kelas.push({ id: Date.now(), nama });
+            
+            const nextId = getNextAutoId(globalDbData.settings.kelas);
+            globalDbData.settings.kelas.push({ id: nextId, nama });
             const success = await updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings);
             if (success) { alert('Kelas berhasil dibuat!'); document.getElementById('input-nama-kelas').value = ''; }
         }
@@ -481,13 +479,19 @@
             const username = document.getElementById('input-username-guru').value.trim();
             const password = document.getElementById('input-password-guru').value.trim();
 
+            if (!nama || !username || !password) {
+                alert('Nama, Username, dan Password wajib diisi!');
+                return;
+            }
+
             if (!globalDbData.users.guru) globalDbData.users.guru = [];
 
             if (id) {
                 const idx = globalDbData.users.guru.findIndex(g => g.id == id);
                 if (idx !== -1) globalDbData.users.guru[idx] = { id: Number(id), nama, mapel, username, password };
             } else {
-                globalDbData.users.guru.push({ id: Date.now(), nama, mapel, username, password });
+                const nextId = getNextAutoId(globalDbData.users.guru);
+                globalDbData.users.guru.push({ id: nextId, nama, mapel, username, password });
             }
 
             const success = await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
@@ -529,7 +533,7 @@
 
         function downloadTemplateGuruExcel() {
             const ws = XLSX.utils.json_to_sheet([
-                { nama: "Dra. Siti Aminah", mapel: "MATEMATIKA, FISIKA", username: "sitiaminah", password: "123" }
+                { nama: "Dra. Siti Aminah", mapel: "MATEMATIKA", username: "sitiaminah", password: "123" }
             ]);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Template_Guru");
@@ -545,14 +549,18 @@
                 const workbook = XLSX.read(data, { type: 'array' });
                 const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 if (!globalDbData.users.guru) globalDbData.users.guru = [];
+                
+                let currentNextId = getNextAutoId(globalDbData.users.guru);
                 rows.forEach(r => {
-                    globalDbData.users.guru.push({
-                        id: Date.now() + Math.floor(Math.random()*1000),
-                        nama: String(r.nama || ''),
-                        mapel: String(r.mapel || ''),
-                        username: String(r.username || ''),
-                        password: String(r.password || '')
-                    });
+                    if (r.nama && r.username) {
+                        globalDbData.users.guru.push({
+                            id: currentNextId++,
+                            nama: String(r.nama).trim(),
+                            mapel: String(r.mapel || '').trim(),
+                            username: String(r.username).trim(),
+                            password: String(r.password || '123').trim()
+                        });
+                    }
                 });
                 const success = await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
                 if (success) { alert('Data guru berhasil diunggah massal!'); fileInput.value = ''; }
@@ -569,13 +577,19 @@
             const username = document.getElementById('input-username-siswa').value.trim();
             const password = document.getElementById('input-password-siswa').value.trim();
 
+            if (!nama || !kelas || !username || !password) {
+                alert('Nama, Kelas, Username, dan Password wajib diisi!');
+                return;
+            }
+
             if (!globalDbData.users.siswa) globalDbData.users.siswa = [];
 
             if (id) {
                 const idx = globalDbData.users.siswa.findIndex(s => s.id == id);
                 if (idx !== -1) globalDbData.users.siswa[idx] = { id: Number(id), nama, kelas, username, password };
             } else {
-                globalDbData.users.siswa.push({ id: Date.now(), nama, kelas, username, password });
+                const nextId = getNextAutoId(globalDbData.users.siswa);
+                globalDbData.users.siswa.push({ id: nextId, nama, kelas, username, password });
             }
 
             const success = await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
@@ -631,14 +645,18 @@
                 const workbook = XLSX.read(data, { type: 'array' });
                 const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 if (!globalDbData.users.siswa) globalDbData.users.siswa = [];
+                
+                let currentNextId = getNextAutoId(globalDbData.users.siswa);
                 rows.forEach(r => {
-                    globalDbData.users.siswa.push({
-                        id: Date.now() + Math.floor(Math.random()*1000),
-                        nama: String(r.nama || ''),
-                        kelas: String(r.kelas || ''),
-                        username: String(r.username || ''),
-                        password: String(r.password || '')
-                    });
+                    if (r.nama && r.username) {
+                        globalDbData.users.siswa.push({
+                            id: currentNextId++,
+                            nama: String(r.nama).trim(),
+                            kelas: String(r.kelas || '').trim(),
+                            username: String(r.username).trim(),
+                            password: String(r.password || '123').trim()
+                        });
+                    }
                 });
                 const success = await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
                 if (success) { alert('Data siswa berhasil diunggah massal!'); fileInput.value = ''; }
@@ -652,11 +670,13 @@
             if (!text) return;
             const lines = text.split('\n');
             if (!globalDbData.users.siswa) globalDbData.users.siswa = [];
+            
+            let currentNextId = getNextAutoId(globalDbData.users.siswa);
             lines.forEach(line => {
                 const parts = line.split(',').map(p => p.trim());
-                if (parts.length >= 4) {
+                if (parts.length >= 4 && parts[0] && parts[2]) {
                     globalDbData.users.siswa.push({
-                        id: Date.now() + Math.floor(Math.random()*1000),
+                        id: currentNextId++,
                         nama: parts[0],
                         kelas: parts[1],
                         username: parts[2],
@@ -711,7 +731,7 @@
                 document.getElementById('stat-total-kelas').innerText = globalDbData.settings.kelas.length;
                 document.getElementById('list-kelas-admin').innerHTML = globalDbData.settings.kelas.map(k => `
                     <li class="p-2 bg-white border rounded text-xs flex justify-between items-center shadow-sm">
-                        <span class="font-bold text-gray-800">${k.nama}</span>
+                        <span class="font-bold text-gray-800">ID: ${k.id} - ${k.nama}</span>
                         <button onclick="handleDeleteKelas(${k.id})" class="bg-red-500 text-white px-2 py-1 rounded font-bold">Hapus</button>
                     </li>`).join('');
                 document.getElementById('input-jadwal-kelas').innerHTML = '<option value="">Pilih Kelas...</option>' + globalDbData.settings.kelas.map(k => `<option value="${k.nama}">${k.nama}</option>`).join('');
@@ -727,7 +747,7 @@
                 document.getElementById('list-guru-admin').innerHTML = globalDbData.users.guru.map(g => `
                     <li class="p-3 bg-white border rounded-lg text-xs flex justify-between items-center shadow-sm">
                         <div>
-                            <span class="font-bold text-gray-800 text-sm">${g.nama}</span> (${g.mapel})
+                            <span class="font-bold text-gray-800 text-sm">#${g.id} ${g.nama}</span> (${g.mapel})
                             <div class="text-gray-500 mt-1 font-mono">User: <b>${g.username}</b> | Pass: <b>${g.password}</b></div>
                         </div>
                         <div class="space-x-1">
@@ -743,7 +763,7 @@
                 document.getElementById('list-siswa-admin').innerHTML = globalDbData.users.siswa.filter(s => s.nama.toLowerCase().includes(keyword)).map(s => `
                     <li class="p-3 bg-white border rounded-lg text-xs flex justify-between items-center shadow-sm">
                         <div>
-                            <span class="font-bold text-gray-800 text-sm">${s.nama}</span> <span class="bg-blue-100 px-2 py-0.5 rounded">${s.kelas}</span>
+                            <span class="font-bold text-gray-800 text-sm">#${s.id} ${s.nama}</span> <span class="bg-blue-100 px-2 py-0.5 rounded">${s.kelas}</span>
                             <div class="text-gray-500 mt-1 font-mono">User: <b>${s.username}</b> | Pass: <b>${s.password}</b></div>
                         </div>
                         <div class="space-x-1">
