@@ -120,7 +120,10 @@
                 <div class="bg-white p-4 sm:p-6 rounded-b-xl shadow-sm border border-t-0 border-gray-100">
                     <!-- Tab Kelas -->
                     <div id="admin-tab-kelas" class="admin-tab-content space-y-4">
-                        <h3 class="text-base font-bold text-gray-800">Manajemen Kelas</h3>
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <h3 class="text-base font-bold text-gray-800">Manajemen Kelas</h3>
+                            <button onclick="handleDeleteAllKelas()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition">🗑️ Hapus Semua Kelas</button>
+                        </div>
                         <form onsubmit="handleCreateClass(event)" class="space-y-3 max-w-lg">
                             <input type="text" id="input-nama-kelas" required placeholder="Nama Kelas Baru (Contoh: X-1)" class="w-full p-2.5 border rounded-lg text-sm">
                             <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm">Buat Kelas</button>
@@ -132,7 +135,17 @@
                     <div id="admin-tab-guru" class="admin-tab-content hidden space-y-4">
                         <div class="flex flex-wrap justify-between items-center gap-2">
                             <h3 id="form-guru-title" class="text-base font-bold text-gray-800">Tambah Guru & Mata Pelajaran yang Diampu</h3>
-                            <button onclick="handleDeleteAllGuru()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition">🗑️ Hapus Semua Guru</button>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="downloadTemplateGuruExcel()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1 shadow">📥 Download Template Guru</button>
+                                <button onclick="handleDeleteAllGuru()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition">🗑️ Hapus Semua Guru</button>
+                            </div>
+                        </div>
+
+                        <!-- Upload Excel Guru -->
+                        <div class="bg-purple-50 border border-purple-200 p-4 rounded-xl space-y-3 max-w-lg">
+                            <h4 class="font-bold text-purple-900 text-xs uppercase tracking-wide">📂 Upload Excel Data Guru (.xlsx / .xls)</h4>
+                            <input type="file" id="input-excel-guru" accept=".xlsx, .xls" class="w-full text-xs border p-2 rounded-lg bg-white">
+                            <button onclick="handleUploadExcelGuru()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs w-full transition">Proses Upload Excel Guru</button>
                         </div>
 
                         <form id="form-guru-admin" onsubmit="handleCreateOrUpdateGuru(event)" class="space-y-3 max-w-lg border-t pt-3">
@@ -153,8 +166,37 @@
                     <div id="admin-tab-siswa" class="admin-tab-content hidden space-y-4">
                         <div class="flex flex-wrap justify-between items-center gap-2">
                             <h3 class="text-base font-bold text-gray-800">Manajemen Data Siswa</h3>
-                            <button onclick="handleDeleteAllSiswa()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition">🗑️ Hapus Semua Siswa</button>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="downloadTemplateSiswaExcel()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1">📥 Download Template Siswa</button>
+                                <button onclick="handleDeleteAllSiswa()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition">🗑️ Hapus Semua Siswa</button>
+                            </div>
                         </div>
+
+                        <!-- Cetak Kartu Siswa per Kelas -->
+                        <div class="bg-teal-50 border border-teal-200 p-4 rounded-xl space-y-3 max-w-lg">
+                            <h4 class="font-bold text-teal-900 text-xs uppercase tracking-wide">🪪 Cetak Kartu Siswa Per Kelas (Lebar 5 cm)</h4>
+                            <div class="flex gap-2">
+                                <select id="select-kelas-cetak-kartu" class="flex-1 p-2 border rounded-lg text-xs bg-white font-semibold">
+                                    <option value="">-- Pilih Kelas --</option>
+                                </select>
+                                <button onclick="cetakKartuSiswaPerKelas()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition">🖨️ Cetak Kartu</button>
+                            </div>
+                        </div>
+
+                        <!-- Upload Excel Siswa -->
+                        <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-3 max-w-lg">
+                            <h4 class="font-bold text-blue-900 text-xs uppercase tracking-wide">📂 Upload File Excel Siswa (.xlsx / .xls)</h4>
+                            <input type="file" id="input-excel-siswa" accept=".xlsx, .xls" class="w-full text-xs border p-2 rounded-lg bg-white">
+                            <button onclick="handleUploadExcelSiswa()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs w-full transition">Proses Upload File Excel</button>
+                        </div>
+
+                        <details class="text-xs text-gray-500 max-w-lg">
+                            <summary class="cursor-pointer font-bold text-blue-600">Atau gunakan Text Manual / Paste CSV</summary>
+                            <form onsubmit="handleBulkUploadSiswa(event)" class="space-y-3 mt-2">
+                                <textarea id="input-bulk-siswa" rows="3" class="w-full p-2.5 border text-xs rounded-lg font-mono" placeholder="Format: nama, kelas, username, password"></textarea>
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg text-xs">Proses Upload Teks</button>
+                            </form>
+                        </details>
 
                         <form id="form-siswa-admin" onsubmit="handleCreateOrUpdateSiswa(event)" class="space-y-2 max-w-lg bg-gray-50 p-4 rounded-xl border">
                             <input type="hidden" id="edit-siswa-id" value="">
@@ -263,6 +305,9 @@
             </div>
         </main>
     </div>
+
+    <!-- AREA CETAK KARTU SISWA (Khusus Print) -->
+    <div id="print-area" class="hidden"></div>
 
     <!-- MODAL GANTI PASSWORD -->
     <div id="ganti-password-modal" class="hidden fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4">
@@ -415,7 +460,19 @@
             if (success) { alert('Kelas berhasil dibuat!'); document.getElementById('input-nama-kelas').value = ''; }
         }
 
-        // --- FITUR GURU (Tambah, Edit, Hapus, Hapus Semua) ---
+        async function handleDeleteKelas(id) {
+            if (!confirm('Yakin ingin menghapus kelas ini?')) return;
+            globalDbData.settings.kelas = globalDbData.settings.kelas.filter(k => k.id != id);
+            await updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings);
+        }
+
+        async function handleDeleteAllKelas() {
+            if (!confirm('PERINGATAN: Hapus SEMUA data kelas?')) return;
+            globalDbData.settings.kelas = [];
+            await updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings);
+        }
+
+        // --- FITUR GURU ---
         async function handleCreateOrUpdateGuru(event) {
             event.preventDefault();
             const id = document.getElementById('edit-guru-id').value;
@@ -470,7 +527,40 @@
             await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
         }
 
-        // --- FITUR SISWA (Tambah, Edit, Hapus, Hapus Semua) ---
+        function downloadTemplateGuruExcel() {
+            const ws = XLSX.utils.json_to_sheet([
+                { nama: "Dra. Siti Aminah", mapel: "MATEMATIKA, FISIKA", username: "sitiaminah", password: "123" }
+            ]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Template_Guru");
+            XLSX.writeFile(wb, "Template_Data_Guru.xlsx");
+        }
+
+        async function handleUploadExcelGuru() {
+            const fileInput = document.getElementById('input-excel-guru');
+            if (fileInput.files.length === 0) { alert('Pilih file Excel terlebih dahulu!'); return; }
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                if (!globalDbData.users.guru) globalDbData.users.guru = [];
+                rows.forEach(r => {
+                    globalDbData.users.guru.push({
+                        id: Date.now() + Math.floor(Math.random()*1000),
+                        nama: String(r.nama || ''),
+                        mapel: String(r.mapel || ''),
+                        username: String(r.username || ''),
+                        password: String(r.password || '')
+                    });
+                });
+                const success = await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
+                if (success) { alert('Data guru berhasil diunggah massal!'); fileInput.value = ''; }
+            };
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        // --- FITUR SISWA ---
         async function handleCreateOrUpdateSiswa(event) {
             event.preventDefault();
             const id = document.getElementById('edit-siswa-id').value;
@@ -523,6 +613,85 @@
             await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
         }
 
+        function downloadTemplateSiswaExcel() {
+            const ws = XLSX.utils.json_to_sheet([
+                { nama: "Ahmad Fauzi", kelas: "X-1", username: "ahmadfauzi", password: "123" }
+            ]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Template_Siswa");
+            XLSX.writeFile(wb, "Template_Data_Siswa.xlsx");
+        }
+
+        async function handleUploadExcelSiswa() {
+            const fileInput = document.getElementById('input-excel-siswa');
+            if (fileInput.files.length === 0) { alert('Pilih file Excel terlebih dahulu!'); return; }
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                if (!globalDbData.users.siswa) globalDbData.users.siswa = [];
+                rows.forEach(r => {
+                    globalDbData.users.siswa.push({
+                        id: Date.now() + Math.floor(Math.random()*1000),
+                        nama: String(r.nama || ''),
+                        kelas: String(r.kelas || ''),
+                        username: String(r.username || ''),
+                        password: String(r.password || '')
+                    });
+                });
+                const success = await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
+                if (success) { alert('Data siswa berhasil diunggah massal!'); fileInput.value = ''; }
+            };
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        async function handleBulkUploadSiswa(event) {
+            event.preventDefault();
+            const text = document.getElementById('input-bulk-siswa').value.trim();
+            if (!text) return;
+            const lines = text.split('\n');
+            if (!globalDbData.users.siswa) globalDbData.users.siswa = [];
+            lines.forEach(line => {
+                const parts = line.split(',').map(p => p.trim());
+                if (parts.length >= 4) {
+                    globalDbData.users.siswa.push({
+                        id: Date.now() + Math.floor(Math.random()*1000),
+                        nama: parts[0],
+                        kelas: parts[1],
+                        username: parts[2],
+                        password: parts[3]
+                    });
+                }
+            });
+            const success = await updateGistData(GIST_ID_USERS, 'db_users.json', globalDbData.users);
+            if (success) { alert('Upload teks berhasil!'); document.getElementById('input-bulk-siswa').value = ''; }
+        }
+
+        // --- CETAK KARTU SISWA ---
+        function cetakKartuSiswaPerKelas() {
+            const kelasVal = document.getElementById('select-kelas-cetak-kartu').value;
+            if (!kelasVal) { alert('Pilih kelas terlebih dahulu!'); return; }
+            const listSiswaKelas = globalDbData.users?.siswa?.filter(s => s.kelas === kelasVal) || [];
+            if (listSiswaKelas.length === 0) { alert('Tidak ada siswa di kelas tersebut.'); return; }
+
+            const printArea = document.getElementById('print-area');
+            printArea.innerHTML = `<div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">` + 
+                listSiswaKelas.map(s => `
+                    <div class="kartu-siswa" style="border: 1px dashed #333; padding: 10px; width: 5cm; border-radius: 8px; font-family: sans-serif; background: #fff;">
+                        <div style="font-size: 10px; font-weight: bold; text-align: center; color: #1d4ed8;">SMA NEGERI 1 TANJUNGSARI</div>
+                        <div style="font-size: 8px; text-align: center; color: #6b7280; margin-bottom: 6px;">KARTU AKUN SISWA LMS</div>
+                        <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">${s.nama}</div>
+                        <div style="font-size: 9px; margin-bottom: 6px;">Kelas: <b>${s.kelas}</b></div>
+                        <div style="font-size: 8px; background: #f3f4f6; padding: 4px; border-radius: 4px;">
+                            <div>Username: <b>${s.username}</b></div>
+                            <div>Password: <b>${s.password}</b></div>
+                        </div>
+                    </div>
+                `).join('') + `</div>`;
+            window.print();
+        }
+
         // --- PENGATURAN PASSWORD ADMIN ---
         async function handleResetAdminPassword(event) {
             event.preventDefault();
@@ -538,11 +707,19 @@
         function renderData() {
             if (!currentUser) return;
 
-            // Render Statistik & Tabel Admin
             if (globalDbData.settings?.kelas) {
                 document.getElementById('stat-total-kelas').innerText = globalDbData.settings.kelas.length;
-                document.getElementById('list-kelas-admin').innerHTML = globalDbData.settings.kelas.map(k => `<li class="p-2 border rounded text-xs flex justify-between"><span>${k.nama}</span></li>`).join('');
+                document.getElementById('list-kelas-admin').innerHTML = globalDbData.settings.kelas.map(k => `
+                    <li class="p-2 bg-white border rounded text-xs flex justify-between items-center shadow-sm">
+                        <span class="font-bold text-gray-800">${k.nama}</span>
+                        <button onclick="handleDeleteKelas(${k.id})" class="bg-red-500 text-white px-2 py-1 rounded font-bold">Hapus</button>
+                    </li>`).join('');
                 document.getElementById('input-jadwal-kelas').innerHTML = '<option value="">Pilih Kelas...</option>' + globalDbData.settings.kelas.map(k => `<option value="${k.nama}">${k.nama}</option>`).join('');
+                
+                const selectCetak = document.getElementById('select-kelas-cetak-kartu');
+                if (selectCetak) {
+                    selectCetak.innerHTML = '<option value="">-- Pilih Kelas --</option>' + globalDbData.settings.kelas.map(k => `<option value="${k.nama}">${k.nama}</option>`).join('');
+                }
             }
 
             if (globalDbData.users?.guru) {
