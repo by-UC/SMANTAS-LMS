@@ -43,7 +43,7 @@
     <!-- ================= OVERLAY LOADING UPLOAD ================= -->
     <div id="loading-overlay" class="hidden fixed inset-0 z-[999] bg-black/60 flex flex-col justify-center items-center space-y-3">
         <div class="spinner-loader"></div>
-        <p id="loading-text" class="text-white font-bold text-sm tracking-wide">Sedang mengunggah file ke Google Drive...</p>
+        <p id="loading-text" class="text-white font-bold text-sm tracking-wide">Sedang mengompres & mengunggah file ke Google Drive...</p>
     </div>
 
     <!-- ================= 1. HALAMAN LOGIN ================= -->
@@ -200,7 +200,7 @@
                                     </div>
                                 </div>
 
-                                <!-- Grid Jam Mulai, Jumlah JP (diperkecil), Jam Selesai -->
+                                <!-- Grid Jam Mulai, Jumlah JP, Jam Selesai -->
                                 <div class="grid grid-cols-12 gap-2">
                                     <div class="col-span-5">
                                         <label class="block text-[11px] font-bold">Jam Mulai</label>
@@ -232,7 +232,7 @@
 
                                 <!-- Upload File PDF/Word/Gambar -->
                                 <div class="bg-indigo-50 border border-indigo-200 p-3 rounded-lg space-y-2">
-                                    <label class="block text-xs font-bold text-indigo-900">📂 Upload File Materi (PDF, Word, Gambar)</label>
+                                    <label class="block text-xs font-bold text-indigo-900">📂 Upload File Materi (PDF, Word, Gambar - Otomatis Kompres)</label>
                                     <input type="file" id="input-file-materi" accept=".pdf, .doc, .docx, .jpg, .jpeg, .png" class="w-full text-xs border p-2 rounded-lg bg-white">
                                 </div>
 
@@ -278,7 +278,7 @@
         </main>
     </div>
 
-    <!-- MODAL PENAMPIL FILE (PDF/Word/Gambar tanpa download) -->
+    <!-- MODAL PENAMPIL FILE -->
     <div id="modal-viewer" class="hidden fixed inset-0 z-50 bg-black/70 flex justify-center items-center p-4">
         <div class="bg-white w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
             <div class="bg-blue-600 text-white px-6 py-3 flex justify-between items-center">
@@ -332,18 +332,19 @@
             }
             loadCacheData();
             await fetchAllDatabases(false);
+            
+            // Jalankan pemeriksaan otomatis kadaluarsa setiap menit
+            setInterval(checkOtomatisHentikanKadaluarsa, 60000);
         });
 
-        function showLoading(text = "Sedang mengunggah file ke Google Drive...") {
+        function showLoading(text = "Sedang memproses & mengunggah file...") {
             document.getElementById('loading-text').innerText = text;
             document.getElementById('loading-overlay').classList.remove('hidden');
-            // Disable all interactive elements
             document.querySelectorAll('button, input, select, textarea').forEach(el => el.disabled = true);
         }
 
         function hideLoading() {
             document.getElementById('loading-overlay').classList.add('hidden');
-            // Enable all interactive elements
             document.querySelectorAll('button, input, select, textarea').forEach(el => el.disabled = false);
         }
 
@@ -458,6 +459,123 @@
             return validIds.length > 0 ? Math.max(...validIds) + 1 : 1;
         }
 
+        // --- KOMPRESSOR GAMBAR (compressor.js logic) ---
+        async function compressImageFile(file, maxWidth = 800, initialQuality = 0.7) {
+            return new Promise((resolve) => {
+                if (!file.type.startsWith('image/')) {
+                    resolve(file);
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        const targetBytes = 200 * 1024; // Target max 200 KB
+                        let quality = initialQuality;
+
+                        const attemptCompression = (currentQuality) => {
+                            canvas.toBlob(
+                                (blob) => {
+                                    if (!blob) {
+                                        resolve(file);
+                                        return;
+                                    }
+
+                                    if (blob.size > targetBytes && currentQuality > 0.1) {
+                                        attemptCompression(currentQuality - 0.1);
+                                        return;
+                                    }
+
+                                    const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                                        type: 'image/jpeg',
+                                        lastModified: Date.now()
+                                    });
+
+                                    console.log(`[Kompresi] Ukuran Asli: ${(file.size / 1024).toFixed(1)} KB -> Hasil: ${(compressedFile.size / 1024).toFixed(1)} KB`);
+                                    resolve(compressedFile);
+                                },
+                                'image/jpeg',
+                                currentQuality
+                            );
+                        };
+
+                        attemptCompression(quality);
+                    };
+                    img.onerror = () => resolve(file);
+                };
+                reader.onerror = () => resolve(file);
+            });
+        }
+
+        async function processAndCompressFile(fileInput) {
+            if (!fileInput || !fileInput.files || fileInput.files.length === 0) return null;
+            let file = fileInput.files[0];
+            const fileNameLower = file.name.toLowerCase();
+
+            if (file.type.startsWith('image/') || fileNameLower.match(/\.(jpg|jpeg|png)$/)) {
+                try {
+                    file = await compressImageFile(file, 800, 0.7);
+                } catch (e) {
+                    console.warn('Gagal kompres gambar, menggunakan file asli:', e);
+                }
+            }
+            return file;
+        }
+
+        // --- OTOMATIS HENTIKAN KADALUARSA (Lewat hari / 12 jam setelah dilanjutkan) ---
+        async function checkOtomatisHentikanKadaluarsa() {
+            if (!globalDbData.jadwal || globalDbData.jadwal.length === 0) return;
+            const now = new Date();
+            let adaPerubahan = false;
+
+            globalDbData.jadwal.forEach(j => {
+                if (!j.hentikanGlobal) {
+                    // Cek 1: Apakah sudah lewat hari dari tanggal materi
+                    const tanggalMateri = new Date(j.tanggal);
+                    tanggalMateri.setHours(23, 59, 59, 999);
+                    
+                    if (now > tanggalMateri) {
+                        j.hentikanGlobal = true;
+                        adaPerubahan = true;
+                    }
+
+                    // Cek 2: Apakah sudah lewat 12 jam sejak waktu terakhir dilanjutkan / dibuat
+                    if (j.waktuDilanjutkan) {
+                        const waktuLanjut = new Date(j.waktuDilanjutkan);
+                        const selisihJam = (now - waktuLanjut) / (1000 * 60 * 60);
+                        if (selisihJam >= 12) {
+                            j.hentikanGlobal = true;
+                            adaPerubahan = true;
+                        }
+                    }
+                }
+            });
+
+            if (adaPerubahan) {
+                await updateGistData(GIST_ID_JADWAL, 'db_jadwal.json', globalDbData.jadwal);
+                if (currentUser && currentUser.role === 'guru') setupGuruDashboardData();
+                if (currentUser && currentUser.role === 'siswa') setupSiswaDashboardData();
+            }
+        }
+
         async function handleLogin(event) {
             event.preventDefault();
             const role = document.getElementById('role-select').value;
@@ -534,7 +652,15 @@
             const listMateri = document.getElementById('list-materi-guru');
             const selectRekap = document.getElementById('select-jadwal-rekap');
             if (listMateri && currentUser && currentUser.role === 'guru') {
-                const myJadwal = globalDbData.jadwal.filter(j => j.guruId == currentUser.id);
+                let myJadwal = globalDbData.jadwal.filter(j => j.guruId == currentUser.id);
+
+                // Urutkan berdasarkan tanggal & jam terbaru di paling atas
+                myJadwal.sort((a, b) => {
+                    const dtA = new Date(`${a.tanggal}T${a.jamMulai || '00:00'}`);
+                    const dtB = new Date(`${b.tanggal}T${b.jamMulai || '00:00'}`);
+                    return dtB - dtA;
+                });
+
                 listMateri.innerHTML = myJadwal.length === 0 ? '<p class="text-xs text-gray-400">Belum ada materi dibuat.</p>' :
                     myJadwal.map(j => `
                         <div class="p-3 bg-white border rounded-lg text-xs space-y-1 shadow-sm">
@@ -572,7 +698,7 @@
             const link = document.getElementById('input-jadwal-link').value.trim();
             const fileInput = document.getElementById('input-file-materi');
 
-            // --- CEK BENTROK JAM PELAJARAN ---
+            // Cek Bentrok
             const bentrokJadwal = globalDbData.jadwal.find(j => {
                 if (id && j.id == id) return false;
                 if (j.kelas !== kelas || j.tanggal !== tanggal) return false;
@@ -580,31 +706,29 @@
             });
 
             if (bentrokJadwal) {
-                // Menggunakan ikon segitiga peringatan kuning kecil dan teks "Jam Bentrok" warna merah bold
                 const iconSvg = `<svg class="w-5 h-5 inline-block mr-1 align-text-bottom" viewBox="0 0 24 24" fill="yellow" stroke="black" stroke-width="2"><path d="M12 2L1 21h22L12 2zm0 3.5l8.5 14.5H3.5L12 5.5z"/><circle cx="12" cy="16" r="1.2" fill="black"/><path d="M12 9v4" stroke="black" stroke-width="2" stroke-linecap="round"/></svg>`;
                 const warningMsg = document.createElement('div');
                 warningMsg.innerHTML = `${iconSvg} <strong class="text-red-600 font-bold">Jam Bentrok</strong> Jam Sudah Terisi ${bentrokJadwal.namaGuru}-${bentrokJadwal.mapel}`;
                 alert(warningMsg.innerText);
                 return;
             }
-            // ---------------------------------
 
             let fileUrl = document.getElementById('edit-file-url-lama')?.value || "";
 
             if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
+                showLoading("Mengompres & Mengunggah file materi...");
+                const compressedFile = await processAndCompressFile(fileInput);
                 const reader = new FileReader();
                 reader.onload = async function(e) {
                     const base64Data = e.target.result.split(',')[1];
                     const payload = {
                         action: "uploadFile",
                         base64Data: base64Data,
-                        fileName: file.name,
-                        mimeType: file.type,
+                        fileName: compressedFile.name,
+                        mimeType: compressedFile.type,
                         folderType: "materi",
                         subFolderNama: currentUser.nama
                     };
-                    showLoading("Sedang mengunggah materi ke Google Drive...");
                     try {
                         const response = await fetch(GAS_WEB_APP_URL, {
                             method: "POST",
@@ -619,10 +743,10 @@
                         } else { alert('Gagal upload: ' + resJson.message); }
                     } catch (err) {
                         hideLoading();
-                        alert('Error GAS (Pastikan Web App diset ke "Anyone"): ' + err.message);
+                        alert('Error GAS: ' + err.message);
                     }
                 };
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(compressedFile);
             } else {
                 saveJadwalToGist(id, kelas, tanggal, hari, jamMulai, jamSelesai, mapel, topik, link, fileUrl);
             }
@@ -637,7 +761,11 @@
                 }
             } else {
                 const nextId = getNextAutoId(globalDbData.jadwal);
-                globalDbData.jadwal.push({ id: nextId, guruId: currentUser.id, namaGuru: currentUser.nama, kelas, tanggal, hari, jamMulai, jamSelesai, mapel, topik, link, fileUrl, hentikanGlobal: false });
+                globalDbData.jadwal.push({ 
+                    id: nextId, guruId: currentUser.id, namaGuru: currentUser.nama, 
+                    kelas, tanggal, hari, jamMulai, jamSelesai, mapel, topik, link, fileUrl, 
+                    hentikanGlobal: false, waktuDilanjutkan: new Date().toISOString() 
+                });
             }
             const success = await updateGistData(GIST_ID_JADWAL, 'db_jadwal.json', globalDbData.jadwal);
             if (success) { alert('Materi berhasil disimpan!'); resetFormJadwal(); setupGuruDashboardData(); }
@@ -647,10 +775,13 @@
             const j = globalDbData.jadwal.find(item => item.id == jadwalId);
             if (!j) return;
             j.hentikanGlobal = !j.hentikanGlobal;
+            if (!j.hentikanGlobal) {
+                j.waktuDilanjutkan = new Date().toISOString(); // Catat waktu saat ditekan lanjutkan
+            }
 
             const success = await updateGistData(GIST_ID_JADWAL, 'db_jadwal.json', globalDbData.jadwal);
             if (success) {
-                alert(j.hentikanGlobal ? 'Pengiriman tugas untuk materi ini telah DIHENTIKAN bagi seluruh siswa.' : 'Pengiriman tugas untuk materi ini DILANJUTKAN kembali.');
+                alert(j.hentikanGlobal ? 'Pengiriman tugas untuk materi ini telah DIHENTIKAN bagi seluruh siswa.' : 'Pengiriman tugas DILANJUTKAN (berlaku 12 jam atau hingga lewat hari).');
                 setupGuruDashboardData();
             }
         }
@@ -830,17 +961,8 @@
 
             let jadwalKelas = globalDbData.jadwal.filter(j => j.kelas === currentUser.kelas);
 
+            // Urutkan berdasarkan tanggal & jam terbaru di paling atas
             jadwalKelas.sort((a, b) => {
-                const aSudahAbsen = globalDbData.absen.some(x => x.jadwalId == a.id && x.siswaId == currentUser.id);
-                const aSudahTugas = globalDbData.tugas.some(x => x.jadwalId == a.id && x.siswaId == currentUser.id);
-                const aSelesai = aSudahAbsen && aSudahTugas ? 1 : 0;
-
-                const bSudahAbsen = globalDbData.absen.some(x => x.jadwalId == b.id && x.siswaId == currentUser.id);
-                const bSudahTugas = globalDbData.tugas.some(x => x.jadwalId == b.id && x.siswaId == currentUser.id);
-                const bSelesai = bSudahAbsen && bSudahTugas ? 1 : 0;
-
-                if (aSelesai !== bSelesai) return aSelesai - bSelesai;
-
                 const dateA = new Date(`${a.tanggal}T${a.jamMulai || '00:00'}`);
                 const dateB = new Date(`${b.tanggal}T${b.jamMulai || '00:00'}`);
                 return dateB - dateA;
@@ -870,10 +992,10 @@
 
                             <div class="pt-2 border-t flex flex-wrap gap-2 items-center">
                                 <div class="w-full mt-1 space-y-1">
-                                    <label class="font-bold text-gray-700">Kirim Tugas (PDF, Word, Gambar):</label>
+                                    <label class="font-bold text-gray-700">Kirim Tugas (PDF, Word, Gambar - Otomatis Kompres):</label>
                                     ${j.hentikanGlobal ? `
                                         <div class="p-2 bg-red-50 border border-red-200 text-red-600 font-bold rounded">
-                                            ⛔ Pengiriman tugas untuk materi ini telah dihentikan oleh Guru.
+                                            ⛔ Pengiriman tugas untuk materi ini telah dihentikan oleh Guru / Kadaluarsa (Lewat 12 Jam / Hari).
                                         </div>
                                     ` : `
                                         <div class="flex gap-2">
@@ -970,14 +1092,15 @@
         async function handleKirimTugas(jadwalId) {
             const jadwal = globalDbData.jadwal.find(j => j.id == jadwalId);
             if (jadwal && jadwal.hentikanGlobal) {
-                alert('Pengiriman tugas telah dihentikan oleh guru.');
+                alert('Pengiriman tugas telah dihentikan atau kadaluarsa.');
                 return;
             }
 
             const fileInput = document.getElementById(`input-file-tugas-${jadwalId}`);
             if (fileInput.files.length === 0) { alert('Pilih file tugas terlebih dahulu!'); return; }
-            const file = fileInput.files[0];
             
+            showLoading("Mengompres & Mengunggah tugas...");
+            const compressedFile = await processAndCompressFile(fileInput);
             await catatOtomatisAbsen(jadwalId);
 
             const reader = new FileReader();
@@ -986,12 +1109,11 @@
                 const payload = {
                     action: "uploadFile",
                     base64Data: base64Data,
-                    fileName: file.name,
-                    mimeType: file.type,
+                    fileName: compressedFile.name,
+                    mimeType: compressedFile.type,
                     folderType: "tugas",
                     subFolderNama: currentUser.kelas
                 };
-                showLoading("Sedang mengunggah tugas ke Google Drive...");
                 try {
                     const response = await fetch(GAS_WEB_APP_URL, {
                         method: "POST",
@@ -1027,10 +1149,10 @@
                     alert('Error GAS: ' + err.message);
                 }
             };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(compressedFile);
         }
 
-        // --- PENAMPIL FILE (VIEWER) DENGAN PENANGANAN URL GOOGLE DRIVE AMAN ---
+        // --- PENAMPIL FILE (VIEWER) ---
         function bukaViewer(fileUrl, judul) {
             const modal = document.getElementById('modal-viewer');
             const iframe = document.getElementById('viewer-iframe');
@@ -1038,7 +1160,6 @@
             
             let embedUrl = fileUrl;
             if (fileUrl && fileUrl.includes('drive.google.com')) {
-                // Ekstrak ID file Google Drive dengan aman
                 let fileId = "";
                 if (fileUrl.includes('/d/')) {
                     const parts = fileUrl.split('/d/');
