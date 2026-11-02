@@ -506,7 +506,7 @@
         async function updateGistData(gistId, filename, dataObj) {
             try {
                 saveCacheData();
-                fetch(`https://api.github.com/gists/${gistId}`, {
+                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
                     method: 'PATCH',
                     headers: {
                         'Authorization': `token ${GIST_TOKEN}`,
@@ -517,19 +517,19 @@
                             [filename]: { content: JSON.stringify(dataObj, null, 2) }
                         }
                     })
-                }).catch(err => console.error('Background sync Gist error:', err));
+                });
 
+                if (!res.ok) throw new Error(`HTTP Error status: ${res.status}`);
                 return true;
             } catch (err) {
-                alert('Kesalahan penyimpanan lokal: ' + err.message);
+                alert('Peringatan Penyimpanan Server: ' + err.message);
                 return false;
             }
         }
 
-        function getNextAutoId(list) {
-            if (!Array.isArray(list) || list.length === 0) return 1;
-            const validIds = list.map(item => Number(item.id)).filter(id => !isNaN(id));
-            return validIds.length > 0 ? Math.max(...validIds) + 1 : 1;
+        // PERBAIKAN BENTROK ID: Menggunakan ID Unik Berbasis Timestamp + Random
+        function generateUniqueId() {
+            return Date.now() + Math.floor(Math.random() * 1000);
         }
 
         async function compressImageFile(file, maxWidth = 800, initialQuality = 0.7) {
@@ -828,6 +828,9 @@
         }
 
         async function saveJadwalToGist(id, kelas, tanggal, hari, jamMulai, jamSelesai, mapel, topik, link, fileUrl) {
+            // Ambil data terbaru dari server untuk menghindari overwriting
+            await fetchAllDatabases(true);
+
             if (!globalDbData.jadwal) globalDbData.jadwal = [];
             if (id) {
                 const idx = globalDbData.jadwal.findIndex(j => j.id == id);
@@ -835,7 +838,7 @@
                     globalDbData.jadwal[idx] = { ...globalDbData.jadwal[idx], kelas, tanggal, hari, jamMulai, jamSelesai, mapel, topik, link, fileUrl };
                 }
             } else {
-                const nextId = getNextAutoId(globalDbData.jadwal);
+                const nextId = generateUniqueId();
                 globalDbData.jadwal.push({ 
                     id: nextId, guruId: currentUser.id, namaGuru: currentUser.nama, 
                     kelas, tanggal, hari, jamMulai, jamSelesai, mapel, topik, link, fileUrl, 
@@ -847,13 +850,14 @@
         }
 
         async function toggleHentikanJadwalGlobal(jadwalId) {
+            await fetchAllDatabases(true);
             const j = globalDbData.jadwal.find(item => item.id == jadwalId);
             if (!j) return;
             j.hentikanGlobal = !j.hentikanGlobal;
 
             const success = await updateGistData(GIST_ID_JADWAL, 'db_jadwal.json', globalDbData.jadwal);
             if (success) {
-                alert(j.hentikanGlobal ? 'Pengiriman tugas telah DIHENTIKAN.' : 'Pengiriman tugas DILANJUTKAN (Siswa dapat mengirimkan tugas tanpa batasan hari hingga dihentikan kembali).');
+                alert(j.hentikanGlobal ? 'Pengiriman tugas telah DIHENTIKAN.' : 'Pengiriman tugas DILANJUTKAN.');
                 setupGuruDashboardData();
             }
         }
@@ -896,6 +900,7 @@
 
         async function handleDeleteJadwal(id, topik) {
             if (!confirm(`Apakah anda yakin akan menghapus materi "${topik}" ?`)) return;
+            await fetchAllDatabases(true);
             globalDbData.jadwal = globalDbData.jadwal.filter(j => j.id != id);
             await updateGistData(GIST_ID_JADWAL, 'db_jadwal.json', globalDbData.jadwal);
             setupGuruDashboardData();
@@ -981,6 +986,7 @@
         }
 
         async function bukaModalNilai(jadwalId, siswaId) {
+            await fetchAllDatabases(true);
             let tug = globalDbData.tugas.find(t => t.jadwalId == jadwalId && t.siswaId == siswaId);
             const defaultNilai = tug && tug.nilai !== undefined && tug.nilai !== null ? tug.nilai : 75;
             const defaultKomentar = tug && tug.komentar ? tug.komentar : "Bagus, tingkatkan lagi pemahaman materinya.";
@@ -993,7 +999,7 @@
                 if (!globalDbData.tugas) globalDbData.tugas = [];
                 const siswaObj = globalDbData.users.siswa.find(s => s.id == siswaId);
                 globalDbData.tugas.push({
-                    id: getNextAutoId(globalDbData.tugas),
+                    id: generateUniqueId(),
                     jadwalId,
                     siswaId,
                     namaSiswa: siswaObj ? siswaObj.nama : 'Siswa',
@@ -1013,13 +1019,14 @@
         }
 
         async function toggleRemedial(jadwalId, siswaId) {
+            await fetchAllDatabases(true);
             let tug = globalDbData.tugas.find(t => t.jadwalId == jadwalId && t.siswaId == siswaId);
             if (!tug) { alert('Siswa belum kirim tugas.'); return; }
             tug.remedial = !tug.remedial;
             
             const success = await updateGistData(GIST_ID_TUGAS, 'db_tugas.json', globalDbData.tugas);
             if (success) { 
-                alert(tug.remedial ? 'Status Remedial diaktifkan. Tombol upload tugas siswa telah dibuka kembali.' : 'Status Remedial dicabut.'); 
+                alert(tug.remedial ? 'Status Remedial diaktifkan.' : 'Status Remedial dicabut.'); 
                 renderRekapAbsenGuru(); 
             }
         }
@@ -1074,7 +1081,6 @@
                 jadwalKelas.map(j => {
                     const tugasSiswa = globalDbData.tugas.find(t => t.jadwalId == j.id && t.siswaId == currentUser.id);
                     
-                    // Validasi waktu mulai pelajaran
                     const waktuMulaiJadwal = new Date(`${j.tanggal}T${j.jamMulai || '00:00'}`);
                     const belumMulai = now < waktuMulaiJadwal;
 
@@ -1155,6 +1161,7 @@
         }
 
         async function catatOtomatisAbsen(jadwalId) {
+            await fetchAllDatabases(true);
             if (!globalDbData.absen) globalDbData.absen = [];
             const jadwal = globalDbData.jadwal.find(j => j.id == jadwalId);
             if (!jadwal) return;
@@ -1181,7 +1188,7 @@
                 existing.waktu = now.toLocaleString();
             } else {
                 globalDbData.absen.push({
-                    id: getNextAutoId(globalDbData.absen),
+                    id: generateUniqueId(),
                     jadwalId,
                     siswaId: currentUser.id,
                     namaSiswa: currentUser.nama,
@@ -1223,6 +1230,7 @@
             setupSiswaDashboardData();
         }
 
+        // PERBAIKAN UTAMA MENCEGAH TERTIMPANYA TUGAS SISWA
         async function handleKirimTugas(jadwalId) {
             const jadwal = globalDbData.jadwal.find(j => j.id == jadwalId);
             if (jadwal) {
@@ -1238,16 +1246,25 @@
                 }
             }
 
+            const fileInput = document.getElementById(`input-file-tugas-${jadwalId}`);
+            if (fileInput.files.length === 0) { alert('Pilih file tugas terlebih dahulu!'); return; }
+            
+            showLoading("Mengambil database terbaru server...");
+            
+            // 1. Dapatkan data Gist terbaru agar array globalDbData.tugas up-to-date
+            await fetchAllDatabases(true);
+
             if (!globalDbData.tugas) globalDbData.tugas = [];
-            let existing = globalDbData.tugas.find(t => t.jadwalId == jadwalId && t.siswaId == currentUser.id);
-            if (existing && existing.fileUrl && !existing.remedial) {
+
+            // 2. Pencarian data eksisting yang spesifik
+            let existingIndex = globalDbData.tugas.findIndex(t => t.jadwalId == jadwalId && t.siswaId == currentUser.id);
+
+            if (existingIndex !== -1 && globalDbData.tugas[existingIndex].fileUrl && !globalDbData.tugas[existingIndex].remedial) {
+                hideLoading();
                 alert('Anda sudah mengirimkan tugas. Pengiriman hanya diizinkan 1 kali kecuali guru memberikan status remedial.');
                 return;
             }
 
-            const fileInput = document.getElementById(`input-file-tugas-${jadwalId}`);
-            if (fileInput.files.length === 0) { alert('Pilih file tugas terlebih dahulu!'); return; }
-            
             showLoading("Mengompres & Mengunggah tugas...");
             const compressedFile = await processAndCompressFile(fileInput);
             await catatOtomatisAbsen(jadwalId);
@@ -1270,15 +1287,20 @@
                         body: JSON.stringify(payload)
                     });
                     const resJson = await response.json();
-                    hideLoading();
+                    
                     if (resJson.status === "success") {
-                        if (existing) {
-                            existing.fileUrl = resJson.fileUrl;
-                            existing.waktu = new Date().toLocaleString();
-                            existing.remedial = false; // Reset status remedial setelah kirim ulang
+                        // Re-fetch untuk sinkronisasi terakhir sebelum menulis
+                        await fetchAllDatabases(true);
+                        existingIndex = globalDbData.tugas.findIndex(t => t.jadwalId == jadwalId && t.siswaId == currentUser.id);
+
+                        if (existingIndex !== -1) {
+                            globalDbData.tugas[existingIndex].fileUrl = resJson.fileUrl;
+                            globalDbData.tugas[existingIndex].waktu = new Date().toLocaleString();
+                            globalDbData.tugas[existingIndex].remedial = false;
                         } else {
+                            // Tambahkan record BARU dengan ID Unik Timestamp
                             globalDbData.tugas.push({
-                                id: getNextAutoId(globalDbData.tugas),
+                                id: generateUniqueId(),
                                 jadwalId,
                                 siswaId: currentUser.id,
                                 namaSiswa: currentUser.nama,
@@ -1290,8 +1312,9 @@
                         }
 
                         const success = await updateGistData(GIST_ID_TUGAS, 'db_tugas.json', globalDbData.tugas);
+                        hideLoading();
                         if (success) { alert('Tugas berhasil dikirim ke Google Drive!'); setupSiswaDashboardData(); }
-                    } else { alert('Gagal upload tugas: ' + resJson.message); }
+                    } else { hideLoading(); alert('Gagal upload tugas: ' + resJson.message); }
                 } catch (err) {
                     hideLoading();
                     alert('Error GAS: ' + err.message);
@@ -1427,10 +1450,11 @@
             const nama = document.getElementById('input-nama-kelas').value.trim();
             if (!nama) return;
             
+            await fetchAllDatabases(true);
             if (!globalDbData.settings) globalDbData.settings = {};
             if (!globalDbData.settings.kelas) globalDbData.settings.kelas = [];
             
-            globalDbData.settings.kelas.push({ id: getNextAutoId(globalDbData.settings.kelas), nama });
+            globalDbData.settings.kelas.push({ id: generateUniqueId(), nama });
             const success = await updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings);
             if (success) { 
                 alert('Kelas berhasil dibuat!'); 
@@ -1441,6 +1465,7 @@
 
         async function handleDeleteAllKelas() {
             if (!confirm('Apakah anda yakin akan menghapus semua kelas ?')) return;
+            await fetchAllDatabases(true);
             if (!globalDbData.settings) globalDbData.settings = {};
             globalDbData.settings.kelas = [];
             const success = await updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings);
@@ -1449,6 +1474,7 @@
 
         async function handleDeleteKelas(id, namaKelas) {
             if (!confirm(`Apakah anda yakin akan menghapus kelas "${namaKelas}" ?`)) return;
+            await fetchAllDatabases(true);
             if (!globalDbData.settings || !globalDbData.settings.kelas) return;
             globalDbData.settings.kelas = globalDbData.settings.kelas.filter(k => k.id != id);
             const success = await updateGistData(GIST_ID_SETTINGS, 'db_settings.json', globalDbData.settings);
@@ -1463,6 +1489,7 @@
             const username = document.getElementById('input-username-guru').value.trim();
             const password = document.getElementById('input-password-guru').value.trim();
 
+            await fetchAllDatabases(true);
             if (!globalDbData.users) globalDbData.users = {};
             if (!globalDbData.users.guru) globalDbData.users.guru = [];
 
@@ -1472,7 +1499,7 @@
                     globalDbData.users.guru[idx] = { id: Number(id), nama, mapel, username, password };
                 }
             } else {
-                const newId = getNextAutoId(globalDbData.users.guru);
+                const newId = generateUniqueId();
                 globalDbData.users.guru.push({ id: newId, nama, mapel, username, password });
             }
 
@@ -1507,6 +1534,7 @@
 
         async function handleDeleteGuru(id, namaGuru) {
             if (!confirm(`Apakah anda yakin akan menghapus guru "${namaGuru}" ?`)) return;
+            await fetchAllDatabases(true);
             if (!globalDbData.users || !globalDbData.users.guru) return;
             globalDbData.users.guru = globalDbData.users.guru.filter(g => g.id != id);
             
@@ -1534,10 +1562,10 @@
                     const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                     const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
                     
+                    await fetchAllDatabases(true);
                     if (!globalDbData.users) globalDbData.users = {};
                     if (!globalDbData.users.guru) globalDbData.users.guru = [];
                     
-                    let nextId = getNextAutoId(globalDbData.users.guru);
                     let addedCount = 0;
 
                     rows.forEach(r => {
@@ -1548,7 +1576,7 @@
 
                         if (namaVal && userVal) {
                             globalDbData.users.guru.push({ 
-                                id: nextId++, 
+                                id: generateUniqueId(), 
                                 nama: String(namaVal).trim(), 
                                 mapel: String(mapelVal || '').trim(), 
                                 username: String(userVal).trim(), 
@@ -1585,6 +1613,7 @@
             const username = document.getElementById('input-username-siswa').value.trim();
             const password = document.getElementById('input-password-siswa').value.trim();
 
+            await fetchAllDatabases(true);
             if (!globalDbData.users) globalDbData.users = {};
             if (!globalDbData.users.siswa) globalDbData.users.siswa = [];
 
@@ -1594,7 +1623,7 @@
                     globalDbData.users.siswa[idx] = { id: Number(id), nama, kelas, username, password };
                 }
             } else {
-                const newId = getNextAutoId(globalDbData.users.siswa);
+                const newId = generateUniqueId();
                 globalDbData.users.siswa.push({ id: newId, nama, kelas, username, password });
             }
 
@@ -1627,6 +1656,7 @@
 
         async function handleDeleteSiswa(id, namaSiswa) {
             if (!confirm(`Apakah anda yakin akan menghapus siswa "${namaSiswa}" ?`)) return;
+            await fetchAllDatabases(true);
             if (!globalDbData.users || !globalDbData.users.siswa) return;
             globalDbData.users.siswa = globalDbData.users.siswa.filter(s => s.id != id);
             
@@ -1637,6 +1667,7 @@
 
         async function handleDeleteAllSiswa() {
             if (!confirm('Apakah anda yakin akan menghapus SEMUA data siswa ?')) return;
+            await fetchAllDatabases(true);
             if (!globalDbData.users) globalDbData.users = {};
             globalDbData.users.siswa = [];
             
@@ -1664,10 +1695,10 @@
                     const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                     const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
                     
+                    await fetchAllDatabases(true);
                     if (!globalDbData.users) globalDbData.users = {};
                     if (!globalDbData.users.siswa) globalDbData.users.siswa = [];
                     
-                    let nextId = getNextAutoId(globalDbData.users.siswa);
                     let addedCount = 0;
 
                     rows.forEach(r => {
@@ -1678,7 +1709,7 @@
 
                         if (namaVal && userVal) {
                             globalDbData.users.siswa.push({ 
-                                id: nextId++, 
+                                id: generateUniqueId(), 
                                 nama: String(namaVal).trim(), 
                                 kelas: String(kelasVal || 'X-1').trim(), 
                                 username: String(userVal).trim(), 
@@ -1747,6 +1778,7 @@
         async function handleSaveDurasiJp() {
             const val = Number(document.getElementById('input-durasi-jp').value);
             if (!val || val < 5) { alert('Durasi JP tidak valid'); return; }
+            await fetchAllDatabases(true);
             if (!globalDbData.settings) globalDbData.settings = {};
             if (!globalDbData.settings.admin_setting) globalDbData.settings.admin_setting = [];
             let setting = globalDbData.settings.admin_setting.find(s => s.key === 'durasi_jp');
@@ -1758,6 +1790,7 @@
         async function handleResetAdminPassword(event) {
             event.preventDefault();
             const newPass = document.getElementById('new-admin-password').value.trim();
+            await fetchAllDatabases(true);
             if (!globalDbData.settings) globalDbData.settings = {};
             if (!globalDbData.settings.admin_setting) globalDbData.settings.admin_setting = [];
             let setting = globalDbData.settings.admin_setting.find(s => s.key === 'admin_password');
