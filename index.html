@@ -519,15 +519,18 @@
                     })
                 });
 
-                if (!res.ok) throw new Error(`HTTP Error status: ${res.status}`);
+                if (!res.ok) {
+                    const errResText = await res.text();
+                    throw new Error(`HTTP Error status: ${res.status} - ${errResText}`);
+                }
                 return true;
             } catch (err) {
+                console.error('Peringatan Penyimpanan Server:', err);
                 alert('Peringatan Penyimpanan Server: ' + err.message);
                 return false;
             }
         }
 
-        // PERBAIKAN BENTROK ID: Menggunakan ID Unik Berbasis Timestamp + Random
         function generateUniqueId() {
             return Date.now() + Math.floor(Math.random() * 1000);
         }
@@ -828,7 +831,6 @@
         }
 
         async function saveJadwalToGist(id, kelas, tanggal, hari, jamMulai, jamSelesai, mapel, topik, link, fileUrl) {
-            // Ambil data terbaru dari server untuk menghindari overwriting
             await fetchAllDatabases(true);
 
             if (!globalDbData.jadwal) globalDbData.jadwal = [];
@@ -1230,7 +1232,6 @@
             setupSiswaDashboardData();
         }
 
-        // PERBAIKAN UTAMA MENCEGAH TERTIMPANYA TUGAS SISWA
         async function handleKirimTugas(jadwalId) {
             const jadwal = globalDbData.jadwal.find(j => j.id == jadwalId);
             if (jadwal) {
@@ -1251,12 +1252,10 @@
             
             showLoading("Mengambil database terbaru server...");
             
-            // 1. Dapatkan data Gist terbaru agar array globalDbData.tugas up-to-date
             await fetchAllDatabases(true);
 
             if (!globalDbData.tugas) globalDbData.tugas = [];
 
-            // 2. Pencarian data eksisting yang spesifik
             let existingIndex = globalDbData.tugas.findIndex(t => t.jadwalId == jadwalId && t.siswaId == currentUser.id);
 
             if (existingIndex !== -1 && globalDbData.tugas[existingIndex].fileUrl && !globalDbData.tugas[existingIndex].remedial) {
@@ -1289,7 +1288,6 @@
                     const resJson = await response.json();
                     
                     if (resJson.status === "success") {
-                        // Re-fetch untuk sinkronisasi terakhir sebelum menulis
                         await fetchAllDatabases(true);
                         existingIndex = globalDbData.tugas.findIndex(t => t.jadwalId == jadwalId && t.siswaId == currentUser.id);
 
@@ -1298,7 +1296,6 @@
                             globalDbData.tugas[existingIndex].waktu = new Date().toLocaleString();
                             globalDbData.tugas[existingIndex].remedial = false;
                         } else {
-                            // Tambahkan record BARU dengan ID Unik Timestamp
                             globalDbData.tugas.push({
                                 id: generateUniqueId(),
                                 jadwalId,
