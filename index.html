@@ -1163,14 +1163,25 @@
         }
 
         async function catatOtomatisAbsen(jadwalId) {
-            await fetchAllDatabases(true);
-            if (!globalDbData.absen) globalDbData.absen = [];
+            if (!currentUser || currentUser.role !== 'siswa') return;
+            
+            // Cek data absensi eksisting di cache lokal
+            let existing = globalDbData.absen.find(a => a.jadwalId == jadwalId && a.siswaId == currentUser.id);
+            const now = new Date();
+
+            // COOLDOWN SYSTEM: Jika siswa sudah absen dalam 5 menit terakhir, jangan kirim request Gist berlebih untuk hemat Rate Limit
+            if (existing && existing.waktu) {
+                const lastAbsenTime = new Date(existing.waktu).getTime();
+                if (!isNaN(lastAbsenTime) && (now.getTime() - lastAbsenTime < 5 * 60 * 1000)) {
+                    return; 
+                }
+            }
+
             const jadwal = globalDbData.jadwal.find(j => j.id == jadwalId);
             if (!jadwal) return;
 
-            const now = new Date();
-            const jamMulaiParts = jadwal.jamMulai.split(':');
-            const jamSelesaiParts = jadwal.jamSelesai.split(':');
+            const jamMulaiParts = (jadwal.jamMulai || '06:30').split(':');
+            const jamSelesaiParts = (jadwal.jamSelesai || '14:00').split(':');
 
             const waktuMulai = new Date(jadwal.tanggal);
             waktuMulai.setHours(Number(jamMulaiParts[0]), Number(jamMulaiParts[1]), 0);
@@ -1178,8 +1189,6 @@
             const waktuSelesai = new Date(jadwal.tanggal);
             waktuSelesai.setHours(Number(jamSelesaiParts[0]), Number(jamSelesaiParts[1]), 0);
 
-            let existing = globalDbData.absen.find(a => a.jadwalId == jadwalId && a.siswaId == currentUser.id);
-            
             let status = 'Hadir';
             if (now > waktuSelesai || now < waktuMulai) {
                 status = 'Terlambat';
@@ -1200,7 +1209,11 @@
                 });
             }
 
-            await updateGistData(GIST_ID_ABSEN, 'db_absen.json', globalDbData.absen);
+            // Simpan ke cache lokal agar langsung responsif
+            saveCacheData();
+
+            // Kirim ke Gist secara senyap di background tanpa fetch database massal
+            updateGistDataSilent(GIST_ID_ABSEN, 'db_absen.json', globalDbData.absen);
         }
 
         async function bukaMateriSiswa(jadwalId, fileUrl, topik) {
